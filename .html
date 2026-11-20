@@ -1,0 +1,2954 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BridgeVoice Triage Terminal v2.4 — Offline Clinical Communication</title>
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts supporting all 10 Indian scripts + Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&family=Noto+Sans+Bengali:wght@600;700&family=Noto+Sans+Devanagari:wght@600;700&family=Noto+Sans+Gujarati:wght@600;700&family=Noto+Sans+Kannada:wght@600;700&family=Noto+Sans+Malayalam:wght@600;700&family=Noto+Sans+Oriya:wght@600;700&family=Noto+Sans+Tamil:wght@600;700&family=Noto+Sans+Telugu:wght@600;700&display=swap"
+    rel="stylesheet"
+  />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: [
+              'Inter',
+              'Noto Sans Devanagari',
+              'Noto Sans Oriya',
+              'Noto Sans Bengali',
+              'Noto Sans Kannada',
+              'Noto Sans Tamil',
+              'Noto Sans Telugu',
+              'Noto Sans Gujarati',
+              'Noto Sans Malayalam',
+              'system-ui',
+              'sans-serif',
+            ],
+            mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <style>
+    body {
+      background-color: #0f1419;
+      color: #e6edf3;
+      font-size: 15px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Interactive SVG Body Zones — Matte Clinical Surface */
+    .body-zone {
+      fill: #1c242e;
+      stroke: #3b4754;
+      stroke-width: 1.75;
+      cursor: pointer;
+      transition: fill 0.15s ease, stroke 0.15s ease;
+    }
+    .body-zone:hover {
+      fill: #3d1820;
+      stroke: #e11d48;
+      stroke-width: 2;
+    }
+    .body-zone.active {
+      fill: #be123c;
+      stroke: #fda4af;
+      stroke-width: 2.25;
+    }
+    .body-label {
+      pointer-events: none;
+      font-weight: 700;
+      font-size: 9.5px;
+      letter-spacing: 0.04em;
+      fill: #9fb0c0;
+      transition: fill 0.15s ease;
+    }
+    .body-zone.active + .body-label,
+    .zone-label-active {
+      fill: #ffffff !important;
+    }
+
+    /* Minimal Audio Level Bars */
+    @keyframes eqBounce {
+      0%, 100% { transform: scaleY(0.25); }
+      50% { transform: scaleY(1); }
+    }
+    .eq-bar {
+      transform-origin: bottom;
+      animation: eqBounce 0.6s ease-in-out infinite;
+    }
+    .eq-bar:nth-child(2) { animation-delay: 0.1s; }
+    .eq-bar:nth-child(3) { animation-delay: 0.2s; }
+    .eq-bar:nth-child(4) { animation-delay: 0.3s; }
+    .eq-bar:nth-child(5) { animation-delay: 0.15s; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-sky-600 selection:text-white">
+
+  <!-- ======================================================================= -->
+  <!-- CLINICAL TERMINAL TOP BAR                                               -->
+  <!-- ======================================================================= -->
+  <header class="bg-[#161c24] border-b border-[#26303d] sticky top-0 z-40">
+    <div class="max-w-[1440px] mx-auto px-4 sm:px-5 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      
+      <!-- Terminal Identity & Local Pack Status -->
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-md bg-[#be123c] border border-[#fb7185]/40 flex items-center justify-center text-white shrink-0">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.75" viewBox="0 0 24 24">
+            <path stroke-linecap="square" stroke-linejoin="miter" d="M12 5v14m7-7H5" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold tracking-tight text-white">
+              BridgeVoice Triage Terminal <span class="font-mono text-xs font-medium text-[#8b9bb0]">v2.4</span>
+            </h1>
+            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded bg-[#0d281e] text-[#34d399] border border-[#059669]/50 font-mono text-[11px] font-semibold">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#10b981]"></span>
+              OFFLINE • LOCAL TTS/ASR ACTIVE
+            </span>
+          </div>
+          <p class="text-xs text-[#8b9bb0]">
+            Unit: ER-TRIAGE-01 • Bi-Directional Clinical Voice &amp; Visual Intake
+          </p>
+        </div>
+      </div>
+
+      <!-- Global Audio Engine Status, Speed & Auto-Speak Controls -->
+      <div class="flex flex-wrap items-center gap-2">
+        <!-- Live Audio Engine Status & Stop Button -->
+        <div id="globalAudioMonitor" class="flex items-center gap-2 bg-[#0f1419] border border-[#26303d] px-2.5 py-1.5 rounded-md">
+          <div id="headerEqBars" class="flex items-end gap-0.5 h-3.5 w-4 opacity-40">
+            <span class="w-0.5 h-2 bg-[#38bdf8]"></span>
+            <span class="w-0.5 h-3.5 bg-[#38bdf8]"></span>
+            <span class="w-0.5 h-1.5 bg-[#38bdf8]"></span>
+            <span class="w-0.5 h-3 bg-[#38bdf8]"></span>
+          </div>
+          <span id="globalAudioStatusText" class="font-mono text-[11px] font-semibold text-[#94a3b8] whitespace-nowrap">
+            AUDIO ENGINE: IDLE
+          </span>
+          <button
+            id="globalAudioStopBtn"
+            onclick="stopAllAudio()"
+            class="hidden px-1.5 py-0.5 rounded bg-[#be123c] hover:bg-[#9f1239] text-white font-mono text-[10px] font-bold cursor-pointer"
+          >
+            STOP
+          </button>
+        </div>
+
+        <!-- Playback Speed Selector -->
+        <div class="flex items-center bg-[#0f1419] border border-[#26303d] rounded-md p-0.5">
+          <button
+            id="speedSlowBtn"
+            onclick="setSpeechRate(0.78)"
+            class="px-2 py-1 rounded font-mono text-[11px] font-semibold bg-[#0284c7] text-white transition cursor-pointer"
+            title="Slower speech rate for distressed patients"
+          >
+            0.8x SLOW
+          </button>
+          <button
+            id="speedNormBtn"
+            onclick="setSpeechRate(1.0)"
+            class="px-2 py-1 rounded font-mono text-[11px] font-semibold text-[#94a3b8] hover:text-white transition cursor-pointer"
+          >
+            1.0x NORM
+          </button>
+        </div>
+
+        <!-- Auto-Speak on Tap Toggle -->
+        <button
+          id="autoSpeakToggleBtn"
+          onclick="toggleAutoSpeak()"
+          class="px-2.5 py-1.5 rounded-md bg-[#0d281e] border border-[#059669]/60 text-[#34d399] font-mono text-[11px] font-semibold transition cursor-pointer"
+        >
+          AUTO-SPEAK ON TAP: ON
+        </button>
+
+        <!-- Elapsed Intake Timer -->
+        <div class="hidden xl:flex items-center gap-2 bg-[#0f1419] border border-[#26303d] px-2.5 py-1 rounded-md">
+          <div>
+            <span class="block font-mono text-[9px] font-semibold uppercase tracking-wider text-[#8b9bb0]">
+              Intake Time
+            </span>
+            <span id="liveTriageTimer" class="text-xs font-bold font-mono text-white">00:00</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Patient Language Selector & Terminal Actions -->
+      <div class="flex flex-wrap items-center gap-2 w-full lg:w-auto justify-between lg:justify-end">
+        <div class="flex items-center gap-2 bg-[#0f1419] border border-[#26303d] px-2.5 py-1 rounded-md">
+          <label for="patientLanguageSelect" class="font-mono text-[11px] font-semibold uppercase tracking-wider text-[#7dd3fc] whitespace-nowrap">
+            Patient Lang:
+          </label>
+          <select
+            id="patientLanguageSelect"
+            onchange="changeLanguage(this.value)"
+            class="bg-[#161c24] text-white font-semibold text-sm px-2.5 py-1 rounded border border-[#334155] focus:outline-none focus:border-[#38bdf8] cursor-pointer"
+          >
+            <option value="or">Odia (ଓଡ଼ିଆ)</option>
+            <option value="bn">Bengali (বাংলা)</option>
+            <option value="hi">Hindi (हिन्दी)</option>
+            <option value="kn">Kannada (ಕನ್ನಡ)</option>
+            <option value="ta">Tamil (தமிழ்)</option>
+            <option value="te">Telugu (తెలుగు)</option>
+            <option value="as">Assamese (অসমীয়া)</option>
+            <option value="mr">Marathi (मराठी)</option>
+            <option value="gu">Gujarati (ગુજરાતી)</option>
+            <option value="ml">Malayalam (മലയാളം)</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button
+            onclick="openModal('qrLockModal')"
+            class="px-3 py-1.5 rounded-md bg-[#1e2733] hover:bg-[#283444] text-white border border-[#334155] font-semibold text-xs flex items-center gap-1.5 transition cursor-pointer"
+            title="View Lock-Screen Emergency Medical ID Card"
+          >
+            <svg class="w-4 h-4 text-[#38bdf8]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <rect x="3" y="4" width="18" height="16" rx="2" />
+              <path d="M7 9h4m-4 4h10m-10 4h6" />
+            </svg>
+            <span>Emergency ID</span>
+          </button>
+
+          <button
+            onclick="resetAllTriage()"
+            class="px-3 py-1.5 rounded-md bg-[#0f1419] hover:bg-[#1e2733] text-[#cbd5e1] hover:text-white font-semibold text-xs border border-[#26303d] flex items-center gap-1.5 transition cursor-pointer"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h5M20 20v-5h-5M5.64 18.36A9 9 0 0020 12M18.36 5.64A9 9 0 004 12" />
+            </svg>
+            <span>Clear</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- COMPACT CASE PRESETS BAR -->
+    <div class="bg-[#0f1419] px-4 sm:px-5 py-2 border-t border-[#26303d]">
+      <div class="max-w-[1440px] mx-auto flex items-center gap-2 overflow-x-auto">
+        <span class="font-mono text-[11px] font-bold uppercase tracking-wider text-[#8b9bb0] shrink-0">
+          Clinical Presets:
+        </span>
+        <div id="demoCasesBar" class="flex items-center gap-1.5 shrink-0">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ======================================================================= -->
+  <!-- MAIN 3-PANEL CLINICAL TRIAGE WORKSPACE                                  -->
+  <!-- ======================================================================= -->
+  <main class="flex-1 max-w-[1440px] w-full mx-auto px-4 sm:px-5 py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+    <!-- ===================================================================== -->
+    <!-- PANEL 1 (LEFT): ANATOMICAL PAIN LOCALIZATION, SEVERITY & ONSET        -->
+    <!-- ===================================================================== -->
+    <section class="lg:col-span-4 bg-[#161c24] rounded-lg border border-[#26303d] p-4 flex flex-col gap-4">
+      <!-- Panel Header -->
+      <div class="flex items-start justify-between gap-2 border-b border-[#26303d] pb-3">
+        <div>
+          <span class="font-mono text-[11px] font-bold uppercase tracking-wider text-[#94a3b8] block">
+            01 / Anatomical Localization &amp; Severity
+          </span>
+          <h2 class="text-base font-bold text-white mt-0.5">Where Does It Hurt?</h2>
+          <p id="step1NativeSub" class="text-sm font-semibold text-[#fda4af] mt-0.5">
+            ଦୟାକରି କେଉଁଠି ଯନ୍ତ୍ରଣା ହେଉଛି ଛୁଇଁ ଦେଖାନ୍ତୁ
+          </p>
+          <p id="step1PhoneticSub" class="font-mono text-[11px] text-[#8b9bb0] mt-0.5">
+            Dayakari keunthi jantrana heuchhi chhuin dekhantu
+          </p>
+        </div>
+        <button
+          onclick="speakNativeInstruction()"
+          class="px-2.5 py-2 rounded-md bg-[#1e2733] hover:bg-[#283444] text-[#e2e8f0] border border-[#334155] text-xs font-semibold flex items-center gap-1.5 shrink-0 transition cursor-pointer"
+          title="Play Voice Instruction in Patient's Language"
+        >
+          <svg class="w-4 h-4 text-[#38bdf8]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zm4.54 3.46a5 5 0 010 7.07m2.83-9.9a9 9 0 010 12.73" />
+          </svg>
+          <span>Ask</span>
+        </button>
+      </div>
+
+      <!-- Orientation Toggle & Interactive Body Diagram -->
+      <div class="bg-[#0f1419] rounded-md border border-[#26303d] p-3 flex flex-col items-center">
+        <div class="w-full flex items-center justify-between mb-2">
+          <div class="inline-flex bg-[#161c24] p-0.5 rounded border border-[#26303d]">
+            <button
+              id="viewFrontBtn"
+              onclick="switchBodyOrientation('front')"
+              class="px-3 py-1 rounded text-xs font-semibold bg-[#0284c7] text-white transition cursor-pointer"
+            >
+              Anterior (Front)
+            </button>
+            <button
+              id="viewBackBtn"
+              onclick="switchBodyOrientation('back')"
+              class="px-3 py-1 rounded text-xs font-semibold text-[#94a3b8] hover:text-white transition cursor-pointer"
+            >
+              Posterior (Back)
+            </button>
+          </div>
+          <button
+            onclick="clearBodyZones()"
+            class="font-mono text-[11px] font-semibold text-[#f87171] hover:text-[#fca5a5] underline cursor-pointer"
+          >
+            CLEAR ZONES
+          </button>
+        </div>
+
+        <!-- Anatomical SVG Diagram -->
+        <svg viewBox="0 0 260 390" class="w-48 sm:w-52 h-auto select-none my-1">
+          <!-- Neck Connector -->
+          <rect x="116" y="64" width="28" height="20" rx="4" fill="#26303d" />
+
+          <!-- 1. HEAD / NECK -->
+          <g onclick="toggleBodyZone('Head/Neck')">
+            <ellipse id="zone-Head/Neck" cx="130" cy="36" rx="26" ry="29" class="body-zone" />
+            <text id="lbl-Head/Neck" x="130" y="39" text-anchor="middle" class="body-label">HEAD / NECK</text>
+          </g>
+
+          <!-- 2. CHEST / HEART -->
+          <g onclick="toggleBodyZone('Chest/Heart')">
+            <path id="zone-Chest/Heart" d="M86,84 Q130,78 174,84 L169,144 L91,144 Z" class="body-zone" />
+            <text id="lbl-Chest/Heart" x="130" y="118" text-anchor="middle" class="body-label">CHEST / HEART</text>
+          </g>
+
+          <!-- 3. ABDOMEN / STOMACH -->
+          <g onclick="toggleBodyZone('Abdomen/Stomach')">
+            <path id="zone-Abdomen/Stomach" d="M91,147 L169,147 L167,199 L93,199 Z" class="body-zone" />
+            <text id="lbl-Abdomen/Stomach" x="130" y="177" text-anchor="middle" class="body-label">ABDOMEN</text>
+          </g>
+
+          <!-- 4. PELVIS / HIP -->
+          <g onclick="toggleBodyZone('Pelvis/Hip')">
+            <path id="zone-Pelvis/Hip" d="M92,202 L168,202 L162,232 L98,232 Z" class="body-zone" />
+            <text id="lbl-Pelvis/Hip" x="130" y="220" text-anchor="middle" class="body-label">PELVIS / HIP</text>
+          </g>
+
+          <!-- 5. RIGHT ARM -->
+          <g onclick="toggleBodyZone('Right Arm')">
+            <path id="zone-Right Arm" d="M83,86 L55,98 L40,192 L50,222 L67,217 L72,180 L87,130 Z" class="body-zone" />
+            <text id="lbl-Right Arm" x="62" y="155" text-anchor="middle" class="body-label" transform="rotate(-76 62,155)">RIGHT ARM</text>
+          </g>
+
+          <!-- 6. LEFT ARM -->
+          <g onclick="toggleBodyZone('Left Arm')">
+            <path id="zone-Left Arm" d="M177,86 L205,98 L220,192 L210,222 L193,217 L188,180 L173,130 Z" class="body-zone" />
+            <text id="lbl-Left Arm" x="198" y="155" text-anchor="middle" class="body-label" transform="rotate(76 198,155)">LEFT ARM</text>
+          </g>
+
+          <!-- 7. RIGHT LEG -->
+          <g onclick="toggleBodyZone('Right Leg')">
+            <path id="zone-Right Leg" d="M96,235 L125,235 L121,375 L99,375 Z" class="body-zone" />
+            <text id="lbl-Right Leg" x="110" y="308" text-anchor="middle" class="body-label" transform="rotate(-90 110,308)">RIGHT LEG</text>
+          </g>
+
+          <!-- 8. LEFT LEG -->
+          <g onclick="toggleBodyZone('Left Leg')">
+            <path id="zone-Left Leg" d="M135,235 L164,235 L161,375 L139,375 Z" class="body-zone" />
+            <text id="lbl-Left Leg" x="150" y="308" text-anchor="middle" class="body-label" transform="rotate(90 150,308)">LEFT LEG</text>
+          </g>
+        </svg>
+
+        <!-- Back/Spine Quick Button with Audio -->
+        <div class="mt-1 flex items-center gap-1.5">
+          <button
+            id="spineQuickBtn"
+            onclick="toggleBodyZone('Back/Spine')"
+            class="px-3 py-1 rounded border border-[#334155] bg-[#161c24] hover:border-[#fb7185] text-xs font-semibold text-[#cbd5e1] transition cursor-pointer"
+          >
+            + Back / Spine
+          </button>
+          <button
+            onclick="speakBodyZoneQuery('Back/Spine')"
+            class="p-1.5 rounded border border-[#334155] bg-[#161c24] hover:bg-[#283444] text-[#38bdf8] transition cursor-pointer"
+            title="Ask about Back/Spine pain in patient language"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zm4.54 3.46a5 5 0 010 7.07" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- Selected Regions Bilingual + Phonetic + Audio Cards -->
+        <div id="selectedBodyBadges" class="w-full mt-2.5 pt-2.5 border-t border-[#26303d] flex flex-col gap-1.5 min-h-[38px]">
+          <span class="text-xs text-[#64748b] font-medium text-center">Tap any body region to translate &amp; confirm aloud</span>
+        </div>
+      </div>
+
+      <!-- 5-Tier Numeric Pain Rating Scale (0-10) with Translation & Audio -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <span class="font-mono text-[11px] font-bold uppercase tracking-wider text-[#94a3b8] block">
+              Numeric Pain Scale (0–10)
+            </span>
+            <span id="painScaleNativePrompt" class="text-xs font-semibold text-[#cbd5e1]">
+              ଯନ୍ତ୍ରଣା କେତେ ତୀବ୍ର? (୧ ରୁ ୧୦ ମଧ୍ୟରେ)
+            </span>
+          </div>
+          <div class="flex items-center gap-1.5">
+            <button
+              onclick="speakPainScalePrompt()"
+              class="p-1.5 rounded bg-[#1e2733] hover:bg-[#283444] border border-[#334155] text-[#38bdf8] cursor-pointer"
+              title="Ask Pain Intensity Question in Patient Language"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zm4.54 3.46a5 5 0 010 7.07" />
+              </svg>
+            </button>
+            <span id="painCurrentTag" class="font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#451a03] text-[#fcd34d] border border-[#d97706]/50">
+              5 / 10
+            </span>
+          </div>
+        </div>
+        <div id="painScaleGrid" class="grid grid-cols-5 gap-1.5">
+          <!-- Populated dynamically with all 5 pain levels (0, 1-3, 4-6, 7-8, 9-10) -->
+        </div>
+      </div>
+
+      <!-- Symptom Onset / Duration Selector with Translation & Audio -->
+      <div class="border-t border-[#26303d] pt-3">
+        <div class="flex items-center justify-between mb-2">
+          <div>
+            <span class="font-mono text-[11px] font-bold uppercase tracking-wider text-[#94a3b8] block">
+              Symptom Onset / Duration
+            </span>
+            <span id="onsetNativePrompt" class="text-xs font-semibold text-[#cbd5e1]">
+              ଏହି ସମସ୍ୟା କେବେଠାରୁ ଆରମ୍ଭ ହୋଇଛି?
+            </span>
+          </div>
+          <button
+            onclick="speakOnsetPrompt()"
+            class="px-2 py-1 rounded bg-[#1e2733] hover:bg-[#283444] border border-[#334155] text-[#38bdf8] font-mono text-[10px] font-semibold flex items-center gap-1 cursor-pointer"
+            title="Ask when symptoms started in patient's language"
+          >
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zm4.54 3.46a5 5 0 010 7.07" />
+            </svg>
+            <span>ASK</span>
+          </button>
+        </div>
+        <div id="onsetGrid" class="grid grid-cols-2 gap-1.5">
+          <!-- Populated dynamically with 4 onset durations -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- PANEL 2 (CENTER): BILINGUAL SYMPTOMS, ALLERGIES & LIVE SPEECH ENGINE  -->
+    <!-- ===================================================================== -->
+    <section class="lg:col-span-4 bg-[#161c24] rounded-lg border border-[#26303d] p-4 flex flex-col gap-4">
+      <!-- Panel Header -->
+      <div class="border-b border-[#26303d] pb-3">
+        <span class="font-mono text-[11px] font-bold uppercase tracking-wider text-[#94a3b8] block">
+          02 / Symptom &amp; Contraindication Intake
+        </span>
+        <h2 class="text-base font-bold text-white mt-0.5">Presenting Symptoms &amp; History</h2>
+        <p class="text-xs text-[#8b9bb0] mt-0.5">
+          Tap tile to log symptom, or press speaker icon to ask patient aloud
+        </p>
+      </div>
+
+      <!-- 8 Clinical Symptoms Grid -->
+      <div>
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-mono text-[11px] font-bold uppercase tracking-wider text-[#94a3b8]">
+            Presenting Symptoms (Bilingual + Phonetic)
+          </span>
+          <span class="font-mono text-[11px] text-[#38bdf8]">VOICE PROMPT</span>
+        </div>
+        <div id="symptomsGrid" class="grid grid-cols-2 gap-2">
+          <!-- Populated dynamically with all 8 symptoms -->
+        </div>
+      </div>
+
+      <!-- 6 Critical Allergies & Comorbidities -->
+      <div class="bg-[#0f1419] border border-[#26303d] rounded-md p-3">
+        <div class="flex items-center justify-between mb-2">
+          <span class="font-mono text-[11px] font-bold uppercase tracking-wider text-[#fca5a5]">
+            Drug Allergies &amp; Medical History
+          </span>
+          <span class="font-mono text-[10px] text-[#8b9bb0]">TAP SPEAKER TO ASK</span>
+        </div>
+        <div id="historyChipsGrid" class="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+          <!-- Populated dynamically with 6 allergy/condition chips -->
+        </div>
+      </div>
+
+      <!-- Two-Way Patient Speech Capture & Keyword Auto-Triage Parser -->
+      <div class="bg-[#0f1419] rounded-md border border-[#26303d] p-3 flex flex-col gap-2.5">
+        <div class="flex items-center justify-between">
+          <span class="font-mono text-[11px] font-bold uppercase tracking-wider text-[#cbd5e1]">
+            Patient-to-Doctor Voice &amp; Text Parser
+          </span>
+          <span id="asrEngineBadge" class="font-mono text-[10px] font-semibold px-1.5 py-0.5 rounded bg-[#161c24] border border-[#334155] text-[#34d399]">
+            LIVE MIC + OFFLINE ASR
+          </span>
+        </div>
+
+        <!-- Visual Audio Level Meter (Visible when active) -->
+        <div id="voiceWaveBox" class="hidden items-center justify-center gap-1 py-2 bg-[#161c24] border border-[#e11d48]/50 rounded">
+          <span class="eq-bar w-1 h-4 bg-[#f43f5e]"></span>
+          <span class="eq-bar w-1 h-4 bg-[#f43f5e]"></span>
+          <span class="eq-bar w-1 h-4 bg-[#f43f5e]"></span>
+          <span class="eq-bar w-1 h-4 bg-[#f43f5e]"></span>
+          <span class="eq-bar w-1 h-4 bg-[#f43f5e]"></span>
+          <span id="listeningLangLabel" class="ml-2 font-mono text-xs font-semibold text-[#fda4af]">
+            Listening for Odia speech...
+          </span>
+        </div>
+
+        <button
+          id="offlineMicBtn"
+          onclick="toggleLiveOrSimulatedSpeech()"
+          class="w-full py-2.5 px-3 rounded-md bg-[#be123c] hover:bg-[#9f1239] text-white border border-[#fb7185]/40 font-semibold text-xs sm:text-sm flex items-center justify-center gap-2 transition cursor-pointer"
+        >
+          <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <rect x="9" y="2" width="6" height="12" rx="3" />
+            <path stroke-linecap="round" d="M5 10a7 7 0 0014 0M12 17v5m-4 0h8" />
+          </svg>
+          <span id="micBtnText">Capture Patient Speech in Odia</span>
+        </button>
+
+        <!-- Sample Utterance Selector -->
+        <div>
+          <label for="phraseSimulatorSelect" class="block font-mono text-[10px] uppercase tracking-wider text-[#8b9bb0] mb-1">
+            Or Test Verified Regional Patient Phrase:
+          </label>
+          <select
+            id="phraseSimulatorSelect"
+            onchange="simulateSpokenPhrase(this.value)"
+            class="w-full bg-[#161c24] text-[#e2e8f0] text-xs font-medium px-2.5 py-2 rounded border border-[#334155] focus:outline-none focus:border-[#38bdf8] cursor-pointer"
+          >
+            <!-- Populated dynamically per language -->
+          </select>
+        </div>
+
+        <!-- Direct Patient Speech / Transliteration Input Box -->
+        <form onsubmit="handleDirectPatientTextSubmit(event)" class="flex gap-1.5">
+          <input
+            id="patientDirectTextInput"
+            type="text"
+            placeholder="Type patient words (e.g., chest pain, penicillin, 2 hours)..."
+            class="flex-1 bg-[#161c24] border border-[#334155] rounded px-2.5 py-1.5 text-xs text-white placeholder-[#64748b] focus:outline-none focus:border-[#38bdf8]"
+          />
+          <button
+            type="submit"
+            class="px-2.5 py-1.5 rounded bg-[#1e2733] hover:bg-[#283444] border border-[#334155] text-white font-semibold text-xs transition cursor-pointer shrink-0"
+          >
+            Parse
+          </button>
+        </form>
+
+        <!-- Captured Speech Transcript with Dual Audio Playback -->
+        <div id="capturedSpeechBox" class="hidden bg-[#161c24] border border-[#26303d] rounded p-2.5 space-y-2">
+          <div class="flex items-start justify-between gap-2">
+            <div>
+              <span class="font-mono text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] block">
+                Verbatim Patient Statement:
+              </span>
+              <p id="capturedNativeQuote" class="text-sm font-semibold text-white leading-snug mt-0.5"></p>
+            </div>
+            <button
+              onclick="speakCapturedPatientNative()"
+              class="px-2 py-1 rounded bg-[#0f1419] hover:bg-[#1e2733] border border-[#334155] text-[#7dd3fc] font-mono text-[10px] font-semibold shrink-0 cursor-pointer"
+              title="Replay Patient Statement Audio"
+            >
+              PLAY NATIVE
+            </button>
+          </div>
+          <div class="pt-1.5 border-t border-[#26303d] flex items-start justify-between gap-2">
+            <div>
+              <span class="font-mono text-[10px] font-bold uppercase tracking-wider text-[#34d399] block">
+                Clinical English Translation:
+              </span>
+              <p id="capturedEnglishQuote" class="text-xs sm:text-sm font-semibold text-[#6ee7b7] mt-0.5"></p>
+            </div>
+            <button
+              onclick="speakCapturedEnglish()"
+              class="px-2 py-1 rounded bg-[#0d281e] hover:bg-[#133a2c] border border-[#059669]/50 text-[#34d399] font-mono text-[10px] font-semibold shrink-0 cursor-pointer"
+              title="Read Translation Aloud in English for Doctor"
+            >
+              SPEAK EN
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- PANEL 3 (RIGHT): CLINICAL HANDOVER, CONFIRMATION & DOCTOR TRANSLATOR  -->
+    <!-- ===================================================================== -->
+    <section class="lg:col-span-4 bg-[#161c24] rounded-lg border border-[#26303d] p-4 flex flex-col gap-4">
+      <!-- Panel Header -->
+      <div class="border-b border-[#26303d] pb-3">
+        <span class="font-mono text-[11px] font-bold uppercase tracking-wider text-[#94a3b8] block">
+          03 / Clinical Handover &amp; Two-Way Voice
+        </span>
+        <h2 class="text-base font-bold text-white mt-0.5">ER Handover &amp; Clinician Translator</h2>
+        <p class="text-xs text-[#8b9bb0] mt-0.5">
+          Bilingual verification readout &amp; instant clinician-to-patient speech
+        </p>
+      </div>
+
+      <!-- Emergency Severity Index (ESI) Banner -->
+      <div id="esiBanner" class="rounded-md p-3 bg-[#291d0a] border-l-4 border-[#f59e0b] border border-[#f59e0b]/40 text-[#fef3c7] transition-all">
+        <div class="flex items-center justify-between gap-2 mb-0.5">
+          <span id="esiLevelTitle" class="font-mono text-sm sm:text-base font-bold uppercase tracking-tight">
+            ESI-2 • EMERGENT
+          </span>
+          <span class="font-mono text-[10px] font-bold px-2 py-0.5 rounded bg-black/40 text-white border border-white/15">
+            TRIAGE SCORE
+          </span>
+        </div>
+        <p id="esiReasonText" class="text-xs font-medium opacity-95">
+          Moderate pain level • Awaiting symptom confirmation
+        </p>
+      </div>
+
+      <!-- Structured Handover Record -->
+      <div class="bg-[#0f1419] border border-[#26303d] rounded-md p-3 space-y-2.5">
+        <div class="flex items-center justify-between border-b border-[#26303d] pb-2">
+          <span class="font-mono text-[11px] font-bold uppercase tracking-wider text-[#94a3b8]">
+            Handover Summary
+          </span>
+          <span id="handoverLangPill" class="font-mono text-[11px] font-semibold text-[#7dd3fc] bg-[#0c273d] border border-[#0284c7]/40 px-2 py-0.5 rounded">
+            Odia (ଓଡ଼ିଆ) ↔ EN
+          </span>
+        </div>
+
+        <!-- Flagged Drug Allergies -->
+        <div id="allergyAlertBox" class="p-2.5 rounded bg-[#161c24] border border-[#26303d]">
+          <span class="font-mono text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] block">
+            Flagged Drug Allergies
+          </span>
+          <p id="handoverAllergiesText" class="text-xs sm:text-sm font-semibold text-[#64748b] mt-0.5">
+            None documented
+          </p>
+        </div>
+
+        <!-- Comorbidities & Onset -->
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <span class="font-mono text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] block">
+              Medical History
+            </span>
+            <p id="handoverConditionsText" class="text-xs font-semibold text-[#e2e8f0] mt-0.5">
+              None documented
+            </p>
+          </div>
+          <div>
+            <span class="font-mono text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] block">
+              Symptom Onset
+            </span>
+            <p id="handoverOnsetText" class="text-xs font-semibold text-[#38bdf8] mt-0.5">
+              Not specified
+            </p>
+          </div>
+        </div>
+
+        <!-- Anatomical Region & NRS Score -->
+        <div class="grid grid-cols-2 gap-2 pt-2 border-t border-[#26303d]">
+          <div>
+            <span class="font-mono text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] block">
+              Affected Region
+            </span>
+            <p id="handoverZonesText" class="text-xs font-bold text-white mt-0.5">None marked</p>
+          </div>
+          <div>
+            <span class="font-mono text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] block">
+              Pain Score (NRS)
+            </span>
+            <p id="handoverPainText" class="font-mono text-xs font-bold text-[#fbbf24] mt-0.5">
+              5 / 10 (MODERATE)
+            </p>
+          </div>
+        </div>
+
+        <!-- Chief Complaint -->
+        <div class="pt-2 border-t border-[#26303d]">
+          <span class="font-mono text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] block">
+            Chief Complaint
+          </span>
+          <p id="handoverComplaintText" class="text-xs font-medium text-[#e2e8f0] mt-0.5 leading-snug">
+            Awaiting patient selection or speech input...
+          </p>
+        </div>
+
+        <!-- Dual-Language Audio Readout & Copy Actions -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 pt-1">
+          <button
+            onclick="readClinicalHandoverEnglish()"
+            class="py-2 px-2.5 rounded bg-[#0c273d] hover:bg-[#133857] border border-[#0284c7]/60 text-[#7dd3fc] font-semibold text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer"
+            title="Read complete clinical summary aloud in English for ER Doctor"
+          >
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zm4.54 3.46a5 5 0 010 7.07" />
+            </svg>
+            <span>READ HANDOVER (EN)</span>
+          </button>
+
+          <button
+            id="confirmPatientAudioBtn"
+            onclick="readPatientConfirmationNative()"
+            class="py-2 px-2.5 rounded bg-[#0d281e] hover:bg-[#133a2c] border border-[#059669]/60 text-[#34d399] font-semibold text-[11px] flex items-center justify-center gap-1.5 transition cursor-pointer"
+            title="Read back all recorded details to patient in their own language to confirm accuracy"
+          >
+            <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zm4.54 3.46a5 5 0 010 7.07" />
+            </svg>
+            <span id="confirmPatientBtnLabel">VERIFY WITH PATIENT (Odia)</span>
+          </button>
+        </div>
+
+        <button
+          id="copyNoteBtn"
+          onclick="copyClinicalHandover()"
+          class="w-full py-1.5 px-3 rounded bg-[#1e2733] hover:bg-[#283444] border border-[#334155] text-white font-semibold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+        >
+          <svg class="w-3.5 h-3.5 text-[#94a3b8]" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="9" y="9" width="13" height="13" rx="2" />
+            <path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+          </svg>
+          <span>Copy Structured EHR Note</span>
+        </button>
+      </div>
+
+      <!-- Clinician -> Patient Two-Way Flashcard & Custom Translator Module -->
+      <div class="border-t border-[#26303d] pt-3 flex flex-col gap-2.5">
+        <div class="flex items-center justify-between">
+          <span class="font-mono text-[11px] font-bold uppercase tracking-wider text-[#7dd3fc]">
+            Clinician → Patient Voice Translator (10 Prompts)
+          </span>
+          <span class="font-mono text-[10px] text-[#8b9bb0]">AUTO-SPEAKS</span>
+        </div>
+
+        <!-- 10 Standard Clinical Questions -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 max-h-44 overflow-y-auto pr-0.5">
+          <button onclick="triggerDoctorQuestion(0)" class="text-left p-2 rounded bg-[#0f1419] hover:bg-[#1e2733] border border-[#26303d] hover:border-[#38bdf8]/50 text-xs font-medium text-[#e2e8f0] transition cursor-pointer">
+            1. "Where exactly does it hurt?"
+          </button>
+          <button onclick="triggerDoctorQuestion(1)" class="text-left p-2 rounded bg-[#0f1419] hover:bg-[#1e2733] border border-[#26303d] hover:border-[#38bdf8]/50 text-xs font-medium text-[#e2e8f0] transition cursor-pointer">
+            2. "Allergic to any medicine?"
+          </button>
+          <button onclick="triggerDoctorQuestion(2)" class="text-left p-2 rounded bg-[#0f1419] hover:bg-[#1e2733] border border-[#26303d] hover:border-[#38bdf8]/50 text-xs font-medium text-[#e2e8f0] transition cursor-pointer">
+            3. "Eaten in the last 6 hours?"
+          </button>
+          <button onclick="triggerDoctorQuestion(3)" class="text-left p-2 rounded bg-[#0f1419] hover:bg-[#1e2733] border border-[#26303d] hover:border-[#38bdf8]/50 text-xs font-medium text-[#e2e8f0] transition cursor-pointer">
+            4. "Move your fingers &amp; toes?"
+          </button>
+          <button onclick="triggerDoctorQuestion(4)" class="text-left p-2 rounded bg-[#0f1419] hover:bg-[#1e2733] border border-[#26303d] hover:border-[#38bdf8]/50 text-xs font-medium text-[#e2e8f0] transition cursor-pointer">
+            5. "Take a deep breath &amp; hold."
+          </button>
+          <button onclick="triggerDoctorQuestion(5)" class="text-left p-2 rounded bg-[#0f1419] hover:bg-[#1e2733] border border-[#26303d] hover:border-[#38bdf8]/50 text-xs font-medium text-[#e2e8f0] transition cursor-pointer">
+            6. "Did you lose consciousness?"
+          </button>
+          <button onclick="triggerDoctorQuestion(6)" class="text-left p-2 rounded bg-[#0f1419] hover:bg-[#1e2733] border border-[#26303d] hover:border-[#38bdf8]/50 text-xs font-medium text-[#e2e8f0] transition cursor-pointer">
+            7. "Any regular daily medicines?"
+          </button>
+          <button onclick="triggerDoctorQuestion(7)" class="text-left p-2 rounded bg-[#0f1419] hover:bg-[#1e2733] border border-[#26303d] hover:border-[#38bdf8]/50 text-xs font-medium text-[#e2e8f0] transition cursor-pointer">
+            8. "We need a blood test &amp; ECG."
+          </button>
+          <button onclick="triggerDoctorQuestion(8)" class="text-left p-2 rounded bg-[#0f1419] hover:bg-[#1e2733] border border-[#26303d] hover:border-[#10b981]/50 text-xs font-medium text-[#a7f3d0] transition cursor-pointer">
+            9. "Giving oxygen &amp; pain relief."
+          </button>
+          <button onclick="triggerDoctorQuestion(9)" class="text-left p-2 rounded bg-[#0f1419] hover:bg-[#1e2733] border border-[#26303d] hover:border-[#10b981]/50 text-xs font-medium text-[#a7f3d0] transition cursor-pointer">
+            10. "Your family has been notified."
+          </button>
+        </div>
+
+        <!-- Custom English -> Patient Language Dictionary Translator -->
+        <form onsubmit="handleCustomDoctorMessage(event)" class="flex gap-1.5">
+          <input
+            id="customDoctorInput"
+            type="text"
+            placeholder="Type English phrase (e.g., Drink water, Stay calm, Lie down)..."
+            class="flex-1 bg-[#0f1419] border border-[#334155] rounded px-2.5 py-1.5 text-xs text-white placeholder-[#64748b] focus:outline-none focus:border-[#38bdf8]"
+          />
+          <button
+            type="submit"
+            class="px-3 py-1.5 rounded bg-[#0284c7] hover:bg-[#0369a1] text-white font-semibold text-xs transition cursor-pointer shrink-0"
+          >
+            Translate &amp; Speak
+          </button>
+        </form>
+
+        <!-- High-Contrast Patient-Facing Display Card -->
+        <div
+          id="patientFlashcard"
+          class="rounded-md bg-[#0f1419] text-white p-3.5 border-2 border-[#38bdf8]"
+        >
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-mono text-[10px] font-bold uppercase tracking-wider text-[#38bdf8]">
+              Patient-Facing Screen &amp; Voice Output
+            </span>
+            <button
+              onclick="replayCurrentFlashcardAudio()"
+              class="px-2.5 py-1 rounded bg-[#0284c7] hover:bg-[#0369a1] text-white font-mono text-[11px] font-bold flex items-center gap-1 transition cursor-pointer"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zm4.54 3.46a5 5 0 010 7.07" />
+              </svg>
+              <span>SPEAK ALOUD</span>
+            </button>
+          </div>
+          <p id="flashcardNativeText" class="text-lg sm:text-xl font-bold text-white leading-snug my-1">
+            ଠିକ୍ କେଉଁ ଜାଗାରେ ଯନ୍ତ୍ରଣା ହେଉଛି?
+          </p>
+          <p id="flashcardPhoneticText" class="font-mono text-xs text-[#93c5fd]">
+            Phonetic: "Thik keun jagare jantrana heuchhi?"
+          </p>
+          <p id="flashcardEnglishText" class="text-xs text-[#94a3b8] mt-1.5 pt-1.5 border-t border-[#26303d]">
+            EN: "Where exactly does it hurt?"
+          </p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ======================================================================= -->
+  <!-- MODAL: UNCONSCIOUS PATIENT LOCK-SCREEN MEDICAL ID CARD                  -->
+  <!-- ======================================================================= -->
+  <div id="qrLockModal" class="hidden fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
+    <div class="bg-[#161c24] rounded-lg max-w-md w-full p-5 border border-[#334155]">
+      <div class="flex items-center justify-between border-b border-[#26303d] pb-3 mb-3">
+        <div>
+          <span class="font-mono text-[10px] font-bold uppercase tracking-wider text-[#fb7185] block">
+            Zero-Unlock Paramedic Access
+          </span>
+          <h3 class="text-base font-bold text-white">Lock-Screen Emergency Medical ID</h3>
+        </div>
+        <button
+          onclick="closeModal('qrLockModal')"
+          class="p-1.5 rounded bg-[#0f1419] hover:bg-[#1e2733] text-[#94a3b8] hover:text-white border border-[#26303d] cursor-pointer"
+          aria-label="Close modal"
+        >
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
+      <p class="text-xs text-[#94a3b8] mb-3.5">
+        Accessible from the patient's lock screen without network connectivity or device passcode.
+      </p>
+
+      <!-- Structured Medical ID Widget -->
+      <div class="bg-[#0f1419] text-white rounded-md p-4 border border-[#334155] mb-4">
+        <div class="flex items-center justify-between border-b border-[#26303d] pb-2.5 mb-3">
+          <div>
+            <span class="font-mono text-[10px] font-semibold uppercase tracking-wider text-[#8b9bb0] block">
+              Patient Record
+            </span>
+            <span class="text-sm font-bold text-white">Ramesh Behera • 34M</span>
+            <span class="text-xs font-medium text-[#7dd3fc] block">Primary Language: Odia (ଓଡ଼ିଆ)</span>
+          </div>
+          <div class="bg-[#be123c] border border-[#fb7185]/40 px-2.5 py-1 rounded text-center">
+            <span class="font-mono text-[9px] font-bold uppercase block text-[#ffe4e6]">BLOOD</span>
+            <span class="font-mono text-base font-bold text-white leading-none">O+</span>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-3.5 bg-white text-[#0f172a] rounded p-2.5 mb-3">
+          <!-- Vector QR Code -->
+          <svg class="w-20 h-20 shrink-0 text-[#0f172a]" viewBox="0 0 100 100" fill="currentColor">
+            <rect x="8" y="8" width="26" height="26" rx="2" fill="none" stroke="currentColor" stroke-width="6"/>
+            <rect x="16" y="16" width="10" height="10"/>
+            <rect x="66" y="8" width="26" height="26" rx="2" fill="none" stroke="currentColor" stroke-width="6"/>
+            <rect x="74" y="16" width="10" height="10"/>
+            <rect x="8" y="66" width="26" height="26" rx="2" fill="none" stroke="currentColor" stroke-width="6"/>
+            <rect x="16" y="74" width="10" height="10"/>
+            <rect x="44" y="10" width="12" height="12"/>
+            <rect x="44" y="30" width="12" height="24"/>
+            <rect x="10" y="44" width="24" height="12"/>
+            <rect x="66" y="44" width="26" height="12"/>
+            <rect x="44" y="64" width="14" height="28"/>
+            <rect x="68" y="64" width="12" height="12"/>
+            <rect x="82" y="80" width="10" height="12"/>
+          </svg>
+          <div class="space-y-1">
+            <span class="inline-block px-1.5 py-0.5 rounded bg-[#be123c] text-white font-mono text-[10px] font-bold uppercase">
+              ALLERGY ALERT
+            </span>
+            <p class="text-xs sm:text-sm font-bold text-[#9f1239] leading-tight">
+              PENICILLIN &amp; SULFA DRUGS
+            </p>
+            <p class="text-xs font-semibold text-[#334155]">Comorbidity: Type-2 Diabetes</p>
+          </div>
+        </div>
+
+        <div class="bg-[#161c24] rounded p-2.5 border border-[#26303d]">
+          <span class="font-mono text-[10px] font-bold uppercase text-[#34d399] block">
+            Emergency Contact (ICE):
+          </span>
+          <p class="text-xs font-semibold text-white mt-0.5">
+            Suresh Behera (Brother) • <span class="font-mono">+91 98610-44219</span>
+          </p>
+          <p class="text-[11px] text-[#cbd5e1] mt-0.5">
+            “ମୋ ଭାଇଙ୍କୁ ତୁରନ୍ତ ଡାକ୍ତରଖାନା ନିଅନ୍ତୁ” (Take my brother to hospital immediately)
+          </p>
+        </div>
+      </div>
+
+      <button
+        onclick="closeModal('qrLockModal')"
+        class="w-full py-2 rounded-md bg-[#1e2733] hover:bg-[#283444] text-white border border-[#334155] font-semibold text-xs transition cursor-pointer"
+      >
+        Close Medical ID
+      </button>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- JAVASCRIPT: 10-LANGUAGE MEDICAL DICTIONARY & TRIAGE ENGINE              -->
+  <!-- ======================================================================= -->
+  <!-- JAVASCRIPT: 10-LANGUAGE MEDICAL DICTIONARY, AUDIO ENGINE & TRIAGE LOGIC -->
+  <!-- ======================================================================= -->
+  <script>
+    // 1. MASTER 10-LANGUAGE CLINICAL DICTIONARY (COMPLETE PHONETIC & NATIVE COVERAGE)
+    const LANG_DATA = {
+      or: {
+        name: 'Odia (ଓଡ଼ିଆ)',
+        short: 'Odia',
+        bcp47: 'or-IN',
+        tapPrompt: 'ଦୟାକରି କେଉଁଠି ଯନ୍ତ୍ରଣା ହେଉଛି ଛୁଇଁ ଦେଖାନ୍ତୁ',
+        tapPromptPhonetic: 'Dayakari keunthi jantrana heuchhi chhuin dekhantu',
+        painPrompt: 'ଯନ୍ତ୍ରଣା କେତେ ତୀବ୍ର? ୧ ରୁ ୧୦ ମଧ୍ୟରେ କୁହନ୍ତୁ',
+        onsetPrompt: 'ଏହି ସମସ୍ୟା କେବେଠାରୁ ଆରମ୍ଭ ହୋଇଛି?',
+        painLevels: [
+          { id: 'none', range: '0', score: 0, en: 'None', native: 'ନାହିଁ', phonetic: 'Nahin' },
+          { id: 'mild', range: '1–3', score: 2, en: 'Mild', native: 'ସାମାନ୍ୟ', phonetic: 'Samanya' },
+          { id: 'moderate', range: '4–6', score: 5, en: 'Moderate', native: 'ମଧ୍ୟମ', phonetic: 'Madhyama' },
+          { id: 'severe', range: '7–8', score: 8, en: 'Severe', native: 'ତୀବ୍ର', phonetic: 'Tibra' },
+          { id: 'extreme', range: '9–10', score: 10, en: 'Extreme', native: 'ଅସହ୍ୟ', phonetic: 'Asahya' },
+        ],
+        onsets: [
+          { id: 'now', en: 'Just Now (<30m)', native: 'ଏବେ ହିଁ', phonetic: 'Ebe hin' },
+          { id: 'hours', en: '1–6 Hours Ago', native: 'କିଛି ଘଣ୍ଟା ପୂର୍ବରୁ', phonetic: 'Kichhi ghanta purbaru' },
+          { id: 'yesterday', en: 'Since Yesterday', native: 'ଗତକାଲିଠାରୁ', phonetic: 'Gatakalitharu' },
+          { id: 'days', en: '3+ Days', native: '୩ ଦିନରୁ ଅଧିକ', phonetic: 'Tini dinaru adhika' },
+        ],
+        zones: {
+          'Head/Neck': { native: 'ମୁଣ୍ଡ / ବେକ', phonetic: 'Munda / Beka', ask: 'ଆପଣଙ୍କ ମୁଣ୍ଡ ବା ବେକରେ ଯନ୍ତ୍ରଣା ହେଉଛି କି?' },
+          'Chest/Heart': { native: 'ଛାତି / ହୃଦୟ', phonetic: 'Chhati / Hrudaya', ask: 'ଆପଣଙ୍କ ଛାତିରେ ଯନ୍ତ୍ରଣା ହେଉଛି କି?' },
+          'Abdomen/Stomach': { native: 'ପେଟ', phonetic: 'Peta', ask: 'ଆପଣଙ୍କ ପେଟରେ ଯନ୍ତ୍ରଣା ହେଉଛି କି?' },
+          'Pelvis/Hip': { native: 'ଅଣ୍ଟା / ପେଲଭିସ୍', phonetic: 'Anta / Pelvis', ask: 'ଆପଣଙ୍କ ଅଣ୍ଟାରେ ଯନ୍ତ୍ରଣା ହେଉଛି କି?' },
+          'Right Arm': { native: 'ଡାହାଣ ହାତ', phonetic: 'Dahana Hata', ask: 'ଆପଣଙ୍କ ଡାହାଣ ହାତରେ ଯନ୍ତ୍ରଣା ହେଉଛି କି?' },
+          'Left Arm': { native: 'ବାମ ହାତ', phonetic: 'Bama Hata', ask: 'ଆପଣଙ୍କ ବାମ ହାତରେ ଯନ୍ତ୍ରଣା ହେଉଛି କି?' },
+          'Right Leg': { native: 'ଡାହାଣ ଗୋଡ଼', phonetic: 'Dahana Goda', ask: 'ଆପଣଙ୍କ ଡାହାଣ ଗୋଡ଼ରେ ଯନ୍ତ୍ରଣା ହେଉଛି କି?' },
+          'Left Leg': { native: 'ବାମ ଗୋଡ଼', phonetic: 'Bama Goda', ask: 'ଆପଣଙ୍କ ବାମ ଗୋଡ଼ରେ ଯନ୍ତ୍ରଣା ହେଉଛି କି?' },
+          'Back/Spine': { native: 'ପିଠି / ମେରୁଦଣ୍ଡ', phonetic: 'Pithi / Merudanda', ask: 'ଆପଣଙ୍କ ପିଠିରେ ଯନ୍ତ୍ରଣା ହେଉଛି କି?' },
+        },
+        symptoms: [
+          { id: 'chest', en: 'Crushing Chest Pain', native: 'ଛାତିରେ ପ୍ରବଳ ଯନ୍ତ୍ରଣା', phonetic: 'Chhatire prabala jantrana', code: 'SYM-01' },
+          { id: 'breathe', en: "Can't Breathe / Choking", native: 'ନିଶ୍ୱାସ ନେବାରେ କଷ୍ଟ', phonetic: 'Nishwasa nebare kasta', code: 'SYM-02' },
+          { id: 'bleed', en: 'Severe Bleeding', native: 'ପ୍ରବଳ ରକ୍ତସ୍ରାବ', phonetic: 'Prabala raktasraba', code: 'SYM-03' },
+          { id: 'dizzy', en: 'Dizziness / Fainting', native: 'ମୁଣ୍ଡ ବୁଲାଇବା', phonetic: 'Munda bulaiba', code: 'SYM-04' },
+          { id: 'numb', en: "Numbness / Can't Move Arm", native: 'ହାତ କାଲୁଆ ଲାଗିବା', phonetic: 'Hata kalua lagiba', code: 'SYM-05' },
+          { id: 'fever', en: 'High Fever & Chills', native: 'ପ୍ରବଳ ଜ୍ୱର ଓ ଶୀତ', phonetic: 'Prabala jwara o shita', code: 'SYM-06' },
+          { id: 'burn', en: 'Burning / Chemical Injury', native: 'ଜଳାପୋଡ଼ା / ଏସିଡ୍ ଆଘାତ', phonetic: 'Jalapoda / Acid aghata', code: 'SYM-07' },
+          { id: 'stomach', en: 'Severe Stomach Pain', native: 'ପେଟରେ ତୀବ୍ର ଯନ୍ତ୍ରଣା', phonetic: 'Petare tibra jantrana', code: 'SYM-08' },
+        ],
+        history: [
+          { id: 'allergy_pen', en: 'ALLERGY: Penicillin / Antibiotics', native: 'ପେନିସିଲିନ୍ ଆଲର୍ଜି', phonetic: 'Penicillin allergy achhi ki?', isAllergy: true },
+          { id: 'allergy_sulfa', en: 'ALLERGY: Sulfa / Painkillers', native: 'ପେନକିଲର ଆଲର୍ଜି', phonetic: 'Painkiller allergy achhi ki?', isAllergy: true },
+          { id: 'cond_diab', en: 'Condition: Diabetic (Type 1/2)', native: 'ଡାଇବେଟିସ୍ (ସୁଗାର)', phonetic: 'Diabetes achhi ki?', isAllergy: false },
+          { id: 'cond_bp', en: 'Condition: High BP / Heart', native: 'ଉଚ୍ଚ ରକ୍ତଚାପ / ହୃଦରୋଗ', phonetic: 'High BP achhi ki?', isAllergy: false },
+          { id: 'cond_asthma', en: 'Condition: Asthma / Inhaler', native: 'ଶ୍ୱାସରୋଗ (ଆସ୍ଥମା)', phonetic: 'Asthma achhi ki?', isAllergy: false },
+          { id: 'cond_preg', en: 'Condition: Pregnant', native: 'ଗର୍ଭବତୀ', phonetic: 'Garbhabati achhanti ki?', isAllergy: false },
+        ],
+        phrases: [
+          {
+            native: 'ମୋ ଛାତିରେ ପ୍ରବଳ ଯନ୍ତ୍ରଣା ହେଉଛି ଏବଂ ମୋର ପେନିସିଲିନ୍ ଆଲର୍ଜି ଅଛି',
+            en: 'I have crushing chest pain and I have a Penicillin allergy.',
+            zones: ['Chest/Heart'],
+            symptoms: ['Crushing Chest Pain'],
+            history: ['ALLERGY: Penicillin / Antibiotics'],
+            pain: 9,
+            onset: '1–6 Hours Ago',
+          },
+          {
+            native: 'ସକାଳୁ ନିଶ୍ୱାସ ନେବାରେ ବହୁତ କଷ୍ଟ ହେଉଛି, ମୁଁ ଡାଇବେଟିସ୍ ରୋଗୀ',
+            en: 'Severe difficulty breathing since morning, I am diabetic.',
+            zones: ['Chest/Heart'],
+            symptoms: ["Can't Breathe / Choking"],
+            history: ['Condition: Diabetic (Type 1/2)'],
+            pain: 8,
+            onset: '1–6 Hours Ago',
+          },
+        ],
+        doctorQs: [
+          { en: 'Where exactly does it hurt?', native: 'ଠିକ୍ କେଉଁ ଜାଗାରେ ଯନ୍ତ୍ରଣା ହେଉଛି?', phonetic: 'Thik keun jagare jantrana heuchhi?' },
+          { en: 'Are you allergic to any medicine?', native: 'ଆପଣଙ୍କର କୌଣସି ଔଷଧରୁ ଆଲର୍ଜି ଅଛି କି?', phonetic: 'Apanankara kaunasi aushadharu allergy achhi ki?' },
+          { en: 'Have you eaten in the last 6 hours?', native: 'ଗତ ୬ ଘଣ୍ଟା ମଧ୍ୟରେ କିଛି ଖାଇଛନ୍ତି କି?', phonetic: 'Gata chha ghanta madhyare kichhi khaichhanti ki?' },
+          { en: 'Can you move your fingers and toes?', native: 'ଆପଣ ହାତ ଓ ଗୋଡ଼ ଆଙ୍ଗୁଠି ହଲାଇ ପାରୁଛନ୍ତି କି?', phonetic: 'Apana hata o goda anguthi halai paruchhanti ki?' },
+          { en: 'Please take a deep breath and hold it.', native: 'ଦୟାକରି ଲମ୍ବା ନିଶ୍ୱାସ ନିଅନ୍ତୁ ଏବଂ ଧରି ରଖନ୍ତୁ।', phonetic: 'Dayakari lamba nishwasa niantu ebam dhari rakhantu.' },
+          { en: 'Did you faint or lose consciousness?', native: 'ଆପଣ ଅଚେତ ହୋଇଯାଇଥିଲେ କି?', phonetic: 'Apana acheta hoijaithile ki?' },
+          { en: 'Do you take any daily medicines?', native: 'ଆପଣ ପ୍ରତିଦିନ କୌଣସି ଔଷଧ ଖାଆନ୍ତି କି?', phonetic: 'Apana pratidina kaunasi aushadha khaanti ki?' },
+          { en: 'We need to do a blood test and ECG.', native: 'ଆମକୁ ରକ୍ତ ପରୀକ୍ଷା ଏବଂ ଇସିଜି କରିବାକୁ ପଡ଼ିବ।', phonetic: 'Amaku rakta pariksha ebam ECG karibaku padiba.' },
+          { en: 'We are giving you oxygen and pain relief now.', native: 'ଆମେ ଏବେ ଆପଣଙ୍କୁ ଅମ୍ଳଜାନ ଓ ଯନ୍ତ୍ରଣା ଉପଶମ ଔଷଧ ଦେଉଛୁ।', phonetic: 'Ame ebe apananku amlajana o jantrana upashama aushadha deuchhu.' },
+          { en: 'Your family has been notified.', native: 'ଆପଣଙ୍କ ପରିବାର ଲୋକଙ୍କୁ ଖବର ଦିଆଯାଇଛି।', phonetic: 'Apananka paribara lokanku khabara diajaichhi.' },
+        ],
+        customVocab: {
+          'water': 'ପାଣି (Pani)',
+          'pain': 'ଯନ୍ତ୍ରଣା (Jantrana)',
+          'doctor': 'ଡାକ୍ତର (Daktara)',
+          'medicine': 'ଔଷଧ (Aushadha)',
+          'breathe': 'ନିଶ୍ୱାସ ନିଅନ୍ତୁ (Nishwasa niantu)',
+          'calm': 'ଶାନ୍ତ ରୁହନ୍ତୁ (Shanta ruhantu)',
+          'sit': 'ବସନ୍ତୁ (Basantu)',
+          'lie down': 'ଶୋଇ ପଡ଼ନ୍ତୁ (Shoi padantu)',
+          'wait': 'ଅପେକ୍ଷା କରନ୍ତୁ (Apeksha karantu)',
+          'yes': 'ହଁ (Han)',
+          'no': 'ନା (Na)',
+        },
+        confirmPrefix: 'ଦୟାକରି ନିଶ୍ଚିତ କରନ୍ତୁ: ଆପଣ ଜଣାଇଛନ୍ତି ',
+        confirmSuffix: '। ଏହା ଠିକ୍ କି?',
+      },
+
+      bn: {
+        name: 'Bengali (বাংলা)',
+        short: 'Bengali',
+        bcp47: 'bn-IN',
+        tapPrompt: 'দয়া করে শরীরের কোথায় ব্যথা হচ্ছে তা স্পর্শ করে দেখান',
+        tapPromptPhonetic: 'Doya kore shorirer kothay byatha hochhe ta sporsho kore dekhan',
+        painPrompt: 'ব্যথা কতটা তীব্র? ১ থেকে ১০ এর মধ্যে বলুন',
+        onsetPrompt: 'এই সমস্যা কখন থেকে শুরু হয়েছে?',
+        painLevels: [
+          { id: 'none', range: '0', score: 0, en: 'None', native: 'নেই', phonetic: 'Nei' },
+          { id: 'mild', range: '1–3', score: 2, en: 'Mild', native: 'সামান্য', phonetic: 'Samanyo' },
+          { id: 'moderate', range: '4–6', score: 5, en: 'Moderate', native: 'মাঝারি', phonetic: 'Majhari' },
+          { id: 'severe', range: '7–8', score: 8, en: 'Severe', native: 'তীব্র', phonetic: 'Tibro' },
+          { id: 'extreme', range: '9–10', score: 10, en: 'Extreme', native: 'অসহ্য', phonetic: 'Osojhyo' },
+        ],
+        onsets: [
+          { id: 'now', en: 'Just Now (<30m)', native: 'এইমাত্র', phonetic: 'Eimatro' },
+          { id: 'hours', en: '1–6 Hours Ago', native: 'কয়েক ঘণ্টা আগে', phonetic: 'Koyek ghonta age' },
+          { id: 'yesterday', en: 'Since Yesterday', native: 'গতকাল থেকে', phonetic: 'Gotokal theke' },
+          { id: 'days', en: '3+ Days', native: '৩ দিনের বেশি', phonetic: 'Tin diner beshi' },
+        ],
+        zones: {
+          'Head/Neck': { native: 'মাথা / ঘাড়', phonetic: 'Matha / Ghar', ask: 'আপনার মাথা বা ঘাড়ে ব্যথা হচ্ছে কি?' },
+          'Chest/Heart': { native: 'বুক / হৃদপিণ্ড', phonetic: 'Buk / Hridpindo', ask: 'আপনার বুকে ব্যথা হচ্ছে কি?' },
+          'Abdomen/Stomach': { native: 'পেট', phonetic: 'Pet', ask: 'আপনার পেটে ব্যথা হচ্ছে কি?' },
+          'Pelvis/Hip': { native: 'কোমর / পেলভিস', phonetic: 'Komor / Pelvis', ask: 'আপনার কোমরে ব্যথা হচ্ছে কি?' },
+          'Right Arm': { native: 'ডান হাত', phonetic: 'Dan Haat', ask: 'আপনার ডান হাতে ব্যথা হচ্ছে কি?' },
+          'Left Arm': { native: 'বাঁ হাত', phonetic: 'Baan Haat', ask: 'আপনার বাঁ হাতে ব্যথা হচ্ছে কি?' },
+          'Right Leg': { native: 'ডান পা', phonetic: 'Dan Pa', ask: 'আপনার ডান পায়ে ব্যথা হচ্ছে কি?' },
+          'Left Leg': { native: 'বাঁ পা', phonetic: 'Baan Pa', ask: 'আপনার বাঁ পায়ে ব্যথা হচ্ছে কি?' },
+          'Back/Spine': { native: 'পিঠ / মেরুদণ্ড', phonetic: 'Pith / Merudondo', ask: 'আপনার পিঠে ব্যথা হচ্ছে কি?' },
+        },
+        symptoms: [
+          { id: 'chest', en: 'Crushing Chest Pain', native: 'বুকে প্রচণ্ড চাপ ও ব্যথা', phonetic: 'Buke prochondo chap o byatha', code: 'SYM-01' },
+          { id: 'breathe', en: "Can't Breathe / Choking", native: 'শ্বাস নিতে কষ্ট হচ্ছে', phonetic: 'Shwas nite kosto hochhe', code: 'SYM-02' },
+          { id: 'bleed', en: 'Severe Bleeding', native: 'অতিরিক্ত রক্তপাত', phonetic: 'Otirikto roktopat', code: 'SYM-03' },
+          { id: 'dizzy', en: 'Dizziness / Fainting', native: 'মাথা ঘোরা / অজ্ঞান ভাব', phonetic: 'Matha ghora / oggyan bhab', code: 'SYM-04' },
+          { id: 'numb', en: "Numbness / Can't Move Arm", native: 'হাত অবশ হয়ে গেছে', phonetic: 'Haat obosh hoye gechhe', code: 'SYM-05' },
+          { id: 'fever', en: 'High Fever & Chills', native: 'তীব্র জ্বর ও কাঁপুনি', phonetic: 'Tibro jor o kampuni', code: 'SYM-06' },
+          { id: 'burn', en: 'Burning / Chemical Injury', native: 'কেমিক্যাল বা আগুনে পোড়া', phonetic: 'Chemical ba agune pora', code: 'SYM-07' },
+          { id: 'stomach', en: 'Severe Stomach Pain', native: 'পেটে তীব্র ব্যথা', phonetic: 'Pete tibro byatha', code: 'SYM-08' },
+        ],
+        history: [
+          { id: 'allergy_pen', en: 'ALLERGY: Penicillin / Antibiotics', native: 'পেনিসিলিন অ্যালার্জি', phonetic: 'Penicillin allergy achhe ki?', isAllergy: true },
+          { id: 'allergy_sulfa', en: 'ALLERGY: Sulfa / Painkillers', native: 'পেইনকিলার অ্যালার্জি', phonetic: 'Painkiller allergy achhe ki?', isAllergy: true },
+          { id: 'cond_diab', en: 'Condition: Diabetic (Type 1/2)', native: 'ডায়াবেটিস (সুগার)', phonetic: 'Diabetes achhe ki?', isAllergy: false },
+          { id: 'cond_bp', en: 'Condition: High BP / Heart', native: 'উচ্চ রক্তচাপ / হার্ট', phonetic: 'High BP achhe ki?', isAllergy: false },
+          { id: 'cond_asthma', en: 'Condition: Asthma / Inhaler', native: 'হাঁপানি (অ্যাজমা)', phonetic: 'Asthma achhe ki?', isAllergy: false },
+          { id: 'cond_preg', en: 'Condition: Pregnant', native: 'গর্ভবতী', phonetic: 'Gorbhoboti achhen ki?', isAllergy: false },
+        ],
+        phrases: [
+          {
+            native: 'কারখানায় কেমিক্যাল লেগে ডান হাত ও চোখ জ্বলছে, আমার ডায়াবেটিস আছে',
+            en: 'Chemical splash burning my right hand and eye, I am diabetic.',
+            zones: ['Right Arm', 'Head/Neck'],
+            symptoms: ['Burning / Chemical Injury'],
+            history: ['Condition: Diabetic (Type 1/2)'],
+            pain: 8,
+            onset: 'Just Now (<30m)',
+          },
+          {
+            native: 'বুকে প্রচণ্ড ব্যথা হচ্ছে এবং পেনিসিলিনে অ্যালার্জি আছে',
+            en: 'Crushing chest pain and I have a Penicillin allergy.',
+            zones: ['Chest/Heart'],
+            symptoms: ['Crushing Chest Pain'],
+            history: ['ALLERGY: Penicillin / Antibiotics'],
+            pain: 9,
+            onset: '1–6 Hours Ago',
+          },
+        ],
+        doctorQs: [
+          { en: 'Where exactly does it hurt?', native: 'ঠিক কোন জায়গায় ব্যথা হচ্ছে?', phonetic: 'Thik kon jaygay byatha hochhe?' },
+          { en: 'Are you allergic to any medicine?', native: 'আপনার কি কোনো ওষুধে অ্যালার্জি আছে?', phonetic: 'Apnar ki kono oshudhe allergy achhe?' },
+          { en: 'Have you eaten in the last 6 hours?', native: 'গত ৬ ঘণ্টার মধ্যে কিছু খেয়েছেন কি?', phonetic: 'Goto chhoy ghontar modhye kichhu kheyechhen ki?' },
+          { en: 'Can you move your fingers and toes?', native: 'আপনি কি হাত ও পায়ের আঙুল নাড়াতে পারছেন?', phonetic: 'Apni ki haat o payer angul narate parchhen?' },
+          { en: 'Please take a deep breath and hold it.', native: 'দয়া করে লম্বা শ্বাস নিন এবং ধরে রাখুন।', phonetic: 'Doya kore lomba shwas nin ebong dhore rakhun.' },
+          { en: 'Did you faint or lose consciousness?', native: 'আপনি কি অজ্ঞান হয়ে গিয়েছিলেন?', phonetic: 'Apni ki oggyan hoye giyechhilen?' },
+          { en: 'Do you take any daily medicines?', native: 'আপনি কি প্রতিদিন কোনো ওষুধ খান?', phonetic: 'Apni ki protidin kono oshudh khan?' },
+          { en: 'We need to do a blood test and ECG.', native: 'আমাদের রক্ত পরীক্ষা এবং ইসিজি করতে হবে।', phonetic: 'Amader rokto porikkha ebong ECG korte hobe.' },
+          { en: 'We are giving you oxygen and pain relief now.', native: 'আমরা এখন আপনাকে অক্সিজেন ও ব্যথা কমানোর ওষুধ দিচ্ছি।', phonetic: 'Amra ekhon apnake oxygen o byatha komanor oshudh dichhi.' },
+          { en: 'Your family has been notified.', native: 'আপনার পরিবারকে খবর দেওয়া হয়েছে।', phonetic: 'Apnar poribarke khobor dewa hoyechhe.' },
+        ],
+        customVocab: {
+          'water': 'জল (Jol)',
+          'pain': 'ব্যথা (Byatha)',
+          'doctor': 'ডাক্তার (Daktar)',
+          'medicine': 'ওষুধ (Oshudh)',
+          'breathe': 'শ্বাস নিন (Shwas nin)',
+          'calm': 'শান্ত থাকুন (Shanto thakun)',
+          'sit': 'বসুন (Boshun)',
+          'lie down': 'শুয়ে পড়ুন (Shuye porun)',
+          'wait': 'অপেক্ষা করুন (Opekkha korun)',
+          'yes': 'হ্যাঁ (Hyan)',
+          'no': 'না (Na)',
+        },
+        confirmPrefix: 'দয়া করে নিশ্চিত করুন: আপনি জানিয়েছেন ',
+        confirmSuffix: '। এটি কি ঠিক?',
+      },
+
+      hi: {
+        name: 'Hindi (हिन्दी)',
+        short: 'Hindi',
+        bcp47: 'hi-IN',
+        tapPrompt: 'कृपया शरीर पर जहाँ दर्द हो रहा है वहाँ स्पर्श करें',
+        tapPromptPhonetic: 'Kripya shareer par jahan dard ho raha hai wahan sparsh karein',
+        painPrompt: 'दर्द कितना तेज़ है? 1 से 10 के बीच बताएं',
+        onsetPrompt: 'यह तकलीफ़ कब से शुरू हुई है?',
+        painLevels: [
+          { id: 'none', range: '0', score: 0, en: 'None', native: 'नहीं', phonetic: 'Nahin' },
+          { id: 'mild', range: '1–3', score: 2, en: 'Mild', native: 'हल्का', phonetic: 'Halka' },
+          { id: 'moderate', range: '4–6', score: 5, en: 'Moderate', native: 'मध्यम', phonetic: 'Madhyam' },
+          { id: 'severe', range: '7–8', score: 8, en: 'Severe', native: 'तेज़', phonetic: 'Tez' },
+          { id: 'extreme', range: '9–10', score: 10, en: 'Extreme', native: 'असहनीय', phonetic: 'Asahniya' },
+        ],
+        onsets: [
+          { id: 'now', en: 'Just Now (<30m)', native: 'अभी-अभी', phonetic: 'Abhi-abhi' },
+          { id: 'hours', en: '1–6 Hours Ago', native: 'कुछ घंटे पहले', phonetic: 'Kuch ghante pehle' },
+          { id: 'yesterday', en: 'Since Yesterday', native: 'कल से', phonetic: 'Kal se' },
+          { id: 'days', en: '3+ Days', native: '3 दिन से ज़्यादा', phonetic: 'Teen din se zyada' },
+        ],
+        zones: {
+          'Head/Neck': { native: 'सिर / गर्दन', phonetic: 'Sir / Gardan', ask: 'क्या आपके सिर या गर्दन में दर्द है?' },
+          'Chest/Heart': { native: 'छाती / हृदय', phonetic: 'Chhati / Hriday', ask: 'क्या आपकी छाती में दर्द हो रहा है?' },
+          'Abdomen/Stomach': { native: 'पेट', phonetic: 'Pet', ask: 'क्या आपके पेट में दर्द हो रहा है?' },
+          'Pelvis/Hip': { native: 'कमर / कूल्हा', phonetic: 'Kamar / Koolha', ask: 'क्या आपकी कमर में दर्द है?' },
+          'Right Arm': { native: 'दाहिना हाथ', phonetic: 'Dahina Haath', ask: 'क्या आपके दाहिने हाथ में दर्द है?' },
+          'Left Arm': { native: 'बायाँ हाथ', phonetic: 'Bayan Haath', ask: 'क्या आपके बाएँ हाथ में दर्द है?' },
+          'Right Leg': { native: 'दाहिना पैर', phonetic: 'Dahina Pair', ask: 'क्या आपके दाहिने पैर में दर्द है?' },
+          'Left Leg': { native: 'बायाँ पैर', phonetic: 'Bayan Pair', ask: 'क्या आपके बाएँ पैर में दर्द है?' },
+          'Back/Spine': { native: 'पीठ / रीढ़', phonetic: 'Peeth / Reedh', ask: 'क्या आपकी पीठ में दर्द हो रहा है?' },
+        },
+        symptoms: [
+          { id: 'chest', en: 'Crushing Chest Pain', native: 'छाती में तेज़ जकड़न व दर्द', phonetic: 'Chhati mein tez jakdan va dard', code: 'SYM-01' },
+          { id: 'breathe', en: "Can't Breathe / Choking", native: 'साँस लेने में तकलीफ़', phonetic: 'Saans lene mein takleef', code: 'SYM-02' },
+          { id: 'bleed', en: 'Severe Bleeding', native: 'तेज़ खून बहना', phonetic: 'Tez khoon behna', code: 'SYM-03' },
+          { id: 'dizzy', en: 'Dizziness / Fainting', native: 'चक्कर आना / बेहोशी', phonetic: 'Chakkar aana / behoshi', code: 'SYM-04' },
+          { id: 'numb', en: "Numbness / Can't Move Arm", native: 'हाथ सुन्न / हिल नहीं रहा', phonetic: 'Haath sunn / hil nahin raha', code: 'SYM-05' },
+          { id: 'fever', en: 'High Fever & Chills', native: 'तेज़ बुखार और कंपकंपी', phonetic: 'Tez bukhar aur kampkampi', code: 'SYM-06' },
+          { id: 'burn', en: 'Burning / Chemical Injury', native: 'जलन या केमिकल चोट', phonetic: 'Jalan ya chemical chot', code: 'SYM-07' },
+          { id: 'stomach', en: 'Severe Stomach Pain', native: 'पेट में बहुत तेज़ दर्द', phonetic: 'Pet mein bahut tez dard', code: 'SYM-08' },
+        ],
+        history: [
+          { id: 'allergy_pen', en: 'ALLERGY: Penicillin / Antibiotics', native: 'पेनिसिलिन से एलर्जी', phonetic: 'Penicillin se allergy hai kya?', isAllergy: true },
+          { id: 'allergy_sulfa', en: 'ALLERGY: Sulfa / Painkillers', native: 'दर्द की दवा से एलर्जी', phonetic: 'Painkiller se allergy hai kya?', isAllergy: true },
+          { id: 'cond_diab', en: 'Condition: Diabetic (Type 1/2)', native: 'डायबिटीज (शुगर)', phonetic: 'Diabetes hai kya?', isAllergy: false },
+          { id: 'cond_bp', en: 'Condition: High BP / Heart', native: 'हाई बीपी / दिल की बीमारी', phonetic: 'High BP hai kya?', isAllergy: false },
+          { id: 'cond_asthma', en: 'Condition: Asthma / Inhaler', native: 'अस्थमा (दमा)', phonetic: 'Asthma hai kya?', isAllergy: false },
+          { id: 'cond_preg', en: 'Condition: Pregnant', native: 'गर्भवती', phonetic: 'Garbhavati hain kya?', isAllergy: false },
+        ],
+        phrases: [
+          {
+            native: 'बाइक एक्सीडेंट में सिर और दाहिने पैर में चोट लगी है, खून बह रहा है',
+            en: 'Bike accident injury to head and right leg, severe bleeding.',
+            zones: ['Head/Neck', 'Right Leg'],
+            symptoms: ['Severe Bleeding', 'Dizziness / Fainting'],
+            history: [],
+            pain: 8,
+            onset: 'Just Now (<30m)',
+          },
+          {
+            native: 'छाती में बहुत तेज़ दर्द है और मुझे पेनिसिलिन से एलर्जी है',
+            en: 'Severe chest pain and I am allergic to Penicillin.',
+            zones: ['Chest/Heart'],
+            symptoms: ['Crushing Chest Pain'],
+            history: ['ALLERGY: Penicillin / Antibiotics'],
+            pain: 9,
+            onset: '1–6 Hours Ago',
+          },
+        ],
+        doctorQs: [
+          { en: 'Where exactly does it hurt?', native: 'ठीक किस जगह पर दर्द हो रहा है?', phonetic: 'Theek kis jagah par dard ho raha hai?' },
+          { en: 'Are you allergic to any medicine?', native: 'क्या आपको किसी दवाई से एलर्जी है?', phonetic: 'Kya aapko kisi dawai se allergy hai?' },
+          { en: 'Have you eaten in the last 6 hours?', native: 'क्या आपने पिछले 6 घंटों में कुछ खाया है?', phonetic: 'Kya aapne pichhle 6 ghanton mein kuch khaya hai?' },
+          { en: 'Can you move your fingers and toes?', native: 'क्या आप हाथ और पैर की उंगलियाँ हिला सकते हैं?', phonetic: 'Kya aap haath aur pair ki ungliyan hila sakte hain?' },
+          { en: 'Please take a deep breath and hold it.', native: 'कृपया गहरी साँस लें और रोक कर रखें।', phonetic: 'Kripya gehri saans lein aur rok kar rakhein.' },
+          { en: 'Did you faint or lose consciousness?', native: 'क्या आप बेहोश हो गए थे?', phonetic: 'Kya aap behosh ho gaye the?' },
+          { en: 'Do you take any daily medicines?', native: 'क्या आप रोज़ कोई दवाई लेते हैं?', phonetic: 'Kya aap roz koi dawai lete hain?' },
+          { en: 'We need to do a blood test and ECG.', native: 'हमें खून की जाँच और ईसीजी करना होगा।', phonetic: 'Hamein khoon ki jaanch aur ECG karna hoga.' },
+          { en: 'We are giving you oxygen and pain relief now.', native: 'हम अभी आपको ऑक्सीजन और दर्द कम करने की दवा दे रहे हैं।', phonetic: 'Hum abhi aapko oxygen aur dard kam karne ki dawa de rahe hain.' },
+          { en: 'Your family has been notified.', native: 'आपके परिवार को सूचित कर दिया गया है।', phonetic: 'Aapke parivar ko soochit kar diya gaya hai.' },
+        ],
+        customVocab: {
+          'water': 'पानी (Pani)',
+          'pain': 'दर्द (Dard)',
+          'doctor': 'डॉक्टर (Doctor)',
+          'medicine': 'दवाई (Dawai)',
+          'breathe': 'साँस लें (Saans lein)',
+          'calm': 'शांत रहें (Shant rahein)',
+          'sit': 'बैठ जाइए (Baith jaiye)',
+          'lie down': 'लेट जाइए (Let jaiye)',
+          'wait': 'इंतज़ार करें (Intezaar karein)',
+          'yes': 'हाँ (Haan)',
+          'no': 'नहीं (Nahin)',
+        },
+        confirmPrefix: 'कृपया पुष्टि करें: आपने बताया है ',
+        confirmSuffix: '। क्या यह सही है?',
+      },
+
+      kn: {
+        name: 'Kannada (ಕನ್ನಡ)',
+        short: 'Kannada',
+        bcp47: 'kn-IN',
+        tapPrompt: 'ದಯವಿಟ್ಟು ಎಲ್ಲಿ ನೋವಾಗುತ್ತಿದೆ ಎಂದು ಚಿತ್ರದ ಮೇಲೆ ಮುಟ್ಟಿ ತೋರಿಸಿ',
+        tapPromptPhonetic: 'Dayavittu elli novaguttide endu chitradamele mutti torisi',
+        painPrompt: 'ನೋವು ಎಷ್ಟು ತೀವ್ರವಾಗಿದೆ? 1 ರಿಂದ 10 ರಲ್ಲಿ ಹೇಳಿ',
+        onsetPrompt: 'ಈ ಸಮಸ್ಯೆ ಯಾವಾಗಿನಿಂದ ಶುರುವಾಗಿದೆ?',
+        painLevels: [
+          { id: 'none', range: '0', score: 0, en: 'None', native: 'ಇಲ್ಲ', phonetic: 'Illa' },
+          { id: 'mild', range: '1–3', score: 2, en: 'Mild', native: 'ಸಾಧಾರಣ', phonetic: 'Sadharana' },
+          { id: 'moderate', range: '4–6', score: 5, en: 'Moderate', native: 'ಮಧ್ಯಮ', phonetic: 'Madhyama' },
+          { id: 'severe', range: '7–8', score: 8, en: 'Severe', native: 'ತೀವ್ರ', phonetic: 'Tivra' },
+          { id: 'extreme', range: '9–10', score: 10, en: 'Extreme', native: 'ಅಸಹನೀಯ', phonetic: 'Asahaniya' },
+        ],
+        onsets: [
+          { id: 'now', en: 'Just Now (<30m)', native: 'ಈಗಷ್ಟೇ', phonetic: 'Igashte' },
+          { id: 'hours', en: '1–6 Hours Ago', native: 'ಕೆಲವು ಗಂಟೆಗಳ ಹಿಂದೆ', phonetic: 'Kelavu gantegala hinde' },
+          { id: 'yesterday', en: 'Since Yesterday', native: 'ನಿನ್ನೆಯಿಂದ', phonetic: 'Ninneyinda' },
+          { id: 'days', en: '3+ Days', native: '3 ದಿನಕ್ಕಿಂತ ಹೆಚ್ಚು', phonetic: 'Muru dinakkinta hecchu' },
+        ],
+        zones: {
+          'Head/Neck': { native: 'ತಲೆ / ಕುತ್ತಿಗೆ', phonetic: 'Tale / Kuttige', ask: 'ನಿಮ್ಮ ತಲೆ ಅಥವಾ ಕುತ್ತಿಗೆಯಲ್ಲಿ ನೋವಿದೆಯೇ?' },
+          'Chest/Heart': { native: 'ಎದೆ / ಹೃದಯ', phonetic: 'Ede / Hrudaya', ask: 'ನಿಮ್ಮ ಎದೆಯಲ್ಲಿ ನೋವಾಗುತ್ತಿದೆಯೇ?' },
+          'Abdomen/Stomach': { native: 'ಹೊಟ್ಟೆ', phonetic: 'Hotte', ask: 'ನಿಮ್ಮ ಹೊಟ್ಟೆಯಲ್ಲಿ ನೋವಾಗುತ್ತಿದೆಯೇ?' },
+          'Pelvis/Hip': { native: 'ಸೊಂಟ / ಪೆಲ್ವಿಸ್', phonetic: 'Sonta / Pelvis', ask: 'ನಿಮ್ಮ ಸೊಂಟದಲ್ಲಿ ನೋವಿದೆಯೇ?' },
+          'Right Arm': { native: 'ಬಲಗೈ', phonetic: 'Balagai', ask: 'ನಿಮ್ಮ ಬಲಗೈಯಲ್ಲಿ ನೋವಿದೆಯೇ?' },
+          'Left Arm': { native: 'ಎಡಗೈ', phonetic: 'Edagai', ask: 'ನಿಮ್ಮ ಎಡಗೈಯಲ್ಲಿ ನೋವಿದೆಯೇ?' },
+          'Right Leg': { native: 'ಬಲಗಾಲು', phonetic: 'Balagalu', ask: 'ನಿಮ್ಮ ಬಲಗಾಲಿನಲ್ಲಿ ನೋವಿದೆಯೇ?' },
+          'Left Leg': { native: 'ಎಡಗಾಲು', phonetic: 'Edagalu', ask: 'ನಿಮ್ಮ ಎಡಗಾಲಿನಲ್ಲಿ ನೋವಿದೆಯೇ?' },
+          'Back/Spine': { native: 'ಬೆನ್ನು / ಬೆನ್ನುಮೂಳೆ', phonetic: 'Bennu / Bennumoole', ask: 'ನಿಮ್ಮ ಬೆನ್ನಿನಲ್ಲಿ ನೋವಿದೆಯೇ?' },
+        },
+        symptoms: [
+          { id: 'chest', en: 'Crushing Chest Pain', native: 'ಎದೆಯಲ್ಲಿ ತೀವ್ರ ನೋವು', phonetic: 'Edeyalli tivra novu', code: 'SYM-01' },
+          { id: 'breathe', en: "Can't Breathe / Choking", native: 'ಉಸಿರಾಡಲು ಕಷ್ಟವಾಗುತ್ತಿದೆ', phonetic: 'Usiradalu kastavaguttide', code: 'SYM-02' },
+          { id: 'bleed', en: 'Severe Bleeding', native: 'ತೀವ್ರ ರಕ್ತಸ್ರಾವ', phonetic: 'Tivra raktasrava', code: 'SYM-03' },
+          { id: 'dizzy', en: 'Dizziness / Fainting', native: 'ತಲೆತಿರುಗುವಿಕೆ', phonetic: 'Taletiruguvike', code: 'SYM-04' },
+          { id: 'numb', en: "Numbness / Can't Move Arm", native: 'ಕೈ ಜೋಮು ಹಿಡಿದಿದೆ', phonetic: 'Kai jomu hididide', code: 'SYM-05' },
+          { id: 'fever', en: 'High Fever & Chills', native: 'ತೀವ್ರ ಜ್ವರ ಮತ್ತು ಚಳಿ', phonetic: 'Tivra jwara mattu chali', code: 'SYM-06' },
+          { id: 'burn', en: 'Burning / Chemical Injury', native: 'ಸುಟ್ಟ ಗಾಯ / ಉರಿ', phonetic: 'Sutta gaya / uri', code: 'SYM-07' },
+          { id: 'stomach', en: 'Severe Stomach Pain', native: 'ಹೊಟ್ಟೆಯಲ್ಲಿ ತೀವ್ರ ನೋವು', phonetic: 'Hotteyalli tivra novu', code: 'SYM-08' },
+        ],
+        history: [
+          { id: 'allergy_pen', en: 'ALLERGY: Penicillin / Antibiotics', native: 'ಪೆನಿಸಿಲಿನ್ ಅಲರ್ಜಿ', phonetic: 'Penicillin allergy ideye?', isAllergy: true },
+          { id: 'allergy_sulfa', en: 'ALLERGY: Sulfa / Painkillers', native: 'ನೋವು ನಿವಾರಕ ಅಲರ್ಜಿ', phonetic: 'Painkiller allergy ideye?', isAllergy: true },
+          { id: 'cond_diab', en: 'Condition: Diabetic (Type 1/2)', native: 'ಮಧುಮೇಹ (ಶುಗರ್)', phonetic: 'Diabetes ideye?', isAllergy: false },
+          { id: 'cond_bp', en: 'Condition: High BP / Heart', native: 'ಅಧಿಕ ರಕ್ತದೊತ್ತಡ (BP)', phonetic: 'High BP ideye?', isAllergy: false },
+          { id: 'cond_asthma', en: 'Condition: Asthma / Inhaler', native: 'ಅಸ್ತಮಾ (ಉಬ್ಬಸ)', phonetic: 'Asthma ideye?', isAllergy: false },
+          { id: 'cond_preg', en: 'Condition: Pregnant', native: 'ಗರ್ಭಿಣಿ', phonetic: 'Garbhini ideera?', isAllergy: false },
+        ],
+        phrases: [
+          {
+            native: 'ನಾನು ಗರ್ಭಿಣಿ, ಹೊಟ್ಟೆಯಲ್ಲಿ ತೀವ್ರ ನೋವಿದೆ ಮತ್ತು ತಲೆತಿರುಗುತ್ತಿದೆ',
+            en: 'I am pregnant, having acute abdominal pain and dizziness.',
+            zones: ['Abdomen/Stomach'],
+            symptoms: ['Severe Stomach Pain', 'Dizziness / Fainting'],
+            history: ['Condition: Pregnant'],
+            pain: 8,
+            onset: '1–6 Hours Ago',
+          },
+          {
+            native: 'ಎದೆಯಲ್ಲಿ ತೀವ್ರ ನೋವಿದೆ ಮತ್ತು ನನಗೆ ಮಧುಮೇಹ ಇದೆ',
+            en: 'Severe chest pain and I have diabetes.',
+            zones: ['Chest/Heart'],
+            symptoms: ['Crushing Chest Pain'],
+            history: ['Condition: Diabetic (Type 1/2)'],
+            pain: 9,
+            onset: '1–6 Hours Ago',
+          },
+        ],
+        doctorQs: [
+          { en: 'Where exactly does it hurt?', native: 'ಸರಿಯಾಗಿ ಎಲ್ಲಿ ನೋವಾಗುತ್ತಿದೆ?', phonetic: 'Sariyagi elli novaguttide?' },
+          { en: 'Are you allergic to any medicine?', native: 'ನಿಮಗೆ ಯಾವುದೇ ಔಷಧಿಯ ಅಲರ್ಜಿ ಇದೆಯೇ?', phonetic: 'Nimage yavude aushadhiya allergy ideye?' },
+          { en: 'Have you eaten in the last 6 hours?', native: 'ಕಳೆದ 6 ಗಂಟೆಗಳಲ್ಲಿ ಏನಾದರೂ ತಿಂದಿದ್ದೀರಾ?', phonetic: 'Kaleda 6 gantegalalli enadaru tindiddira?' },
+          { en: 'Can you move your fingers and toes?', native: 'ನಿಮ್ಮ ಕೈ ಮತ್ತು ಕಾಲಿನ ಬೆರಳುಗಳನ್ನು ಅಲ್ಲಾಡಿಸಬಹುದೇ?', phonetic: 'Nimma kai mattu kalina beralugalannu alladisabahude?' },
+          { en: 'Please take a deep breath and hold it.', native: 'ದಯವಿಟ್ಟು ದೀರ್ಘವಾಗಿ ಉಸಿರು ತೆಗೆದುಕೊಂಡು ಹಿಡಿದಿಟ್ಟುಕೊಳ್ಳಿ.', phonetic: 'Dayavittu dirghavagi usiru tegedukondu hididittukolli.' },
+          { en: 'Did you faint or lose consciousness?', native: 'ನೀವು ಪ್ರಜ್ಞೆ ತಪ್ಪಿದ್ದೀರಾ?', phonetic: 'Nivu prajne tappiddira?' },
+          { en: 'Do you take any daily medicines?', native: 'ನೀವು ಪ್ರತಿದಿನ ಯಾವುದಾದರೂ ಔಷಧಿ ತೆಗೆದುಕೊಳ್ಳುತ್ತೀರಾ?', phonetic: 'Nivu pratidina yavudadaru aushadhi tegedukolluttira?' },
+          { en: 'We need to do a blood test and ECG.', native: 'ನಾವು ರಕ್ತ ಪರೀಕ್ಷೆ ಮತ್ತು ಇಸಿಜಿ ಮಾಡಬೇಕಾಗಿದೆ.', phonetic: 'Navu rakta parikshe mattu ECG madabekagide.' },
+          { en: 'We are giving you oxygen and pain relief now.', native: 'ನಾವು ಈಗ ನಿಮಗೆ ಆಮ್ಲಜನಕ ಮತ್ತು ನೋವು ನಿವಾರಕ ಔಷಧ ನೀಡುತ್ತಿದ್ದೇವೆ.', phonetic: 'Navu iga nimage amlajanaka mattu novu nivaraka aushadha niduttiddeve.' },
+          { en: 'Your family has been notified.', native: 'ನಿಮ್ಮ ಕುಟುಂಬಕ್ಕೆ ಮಾಹಿತಿ ನೀಡಲಾಗಿದೆ.', phonetic: 'Nimma kutumbakke mahiti nidalagide.' },
+        ],
+        customVocab: {
+          'water': 'ನೀರು (Neeru)',
+          'pain': 'ನೋವು (Novu)',
+          'doctor': 'ವೈದ್ಯರು (Vaidyaru)',
+          'medicine': 'ಔಷಧಿ (Aushadhi)',
+          'breathe': 'ಉಸಿರು ತೆಗೆದುಕೊಳ್ಳಿ (Usiru tegedukolli)',
+          'calm': 'ಶಾಂತವಾಗಿರಿ (Shantavagiri)',
+          'sit': 'ಕುಳಿತುಕೊಳ್ಳಿ (Kulitukolli)',
+          'lie down': 'ಮಲಗಿಕೊಳ್ಳಿ (Malagikolli)',
+          'wait': 'ಕಾಯಿರಿ (Kayiri)',
+          'yes': 'ಹೌದು (Haudu)',
+          'no': 'ಇಲ್ಲ (Illa)',
+        },
+        confirmPrefix: 'ದಯವಿಟ್ಟು ಖಚಿತಪಡಿಸಿ: ನೀವು ತಿಳಿಸಿದ್ದೀರಿ ',
+        confirmSuffix: '. ಇದು ಸರಿಯಾಗಿದೆಯೇ?',
+      },
+
+      ta: {
+        name: 'Tamil (தமிழ்)',
+        short: 'Tamil',
+        bcp47: 'ta-IN',
+        tapPrompt: 'உடலில் எங்கே வலிக்கிறது என்பதைத் தொட்டுக் காட்டவும்',
+        tapPromptPhonetic: 'Udalil enge valikkirathu enbathai thottu kattavum',
+        painPrompt: 'வலி எவ்வளவு கடுமையாக உள்ளது? 1 முதல் 10 வரை சொல்லவும்',
+        onsetPrompt: 'இந்தப் பிரச்சனை எப்போது தொடங்கியது?',
+        painLevels: [
+          { id: 'none', range: '0', score: 0, en: 'None', native: 'இல்லை', phonetic: 'Illai' },
+          { id: 'mild', range: '1–3', score: 2, en: 'Mild', native: 'லேசான', phonetic: 'Lesana' },
+          { id: 'moderate', range: '4–6', score: 5, en: 'Moderate', native: 'மிதமான', phonetic: 'Mithamana' },
+          { id: 'severe', range: '7–8', score: 8, en: 'Severe', native: 'கடுமையான', phonetic: 'Kadumaiyana' },
+          { id: 'extreme', range: '9–10', score: 10, en: 'Extreme', native: 'தாங்க முடியாத', phonetic: 'Thanga mudiyatha' },
+        ],
+        onsets: [
+          { id: 'now', en: 'Just Now (<30m)', native: 'இப்போதுதான்', phonetic: 'Ippothuthan' },
+          { id: 'hours', en: '1–6 Hours Ago', native: 'சில மணி நேரம் முன்', phonetic: 'Sila mani neram mun' },
+          { id: 'yesterday', en: 'Since Yesterday', native: 'நேற்றிலிருந்து', phonetic: 'Netrilirunthu' },
+          { id: 'days', en: '3+ Days', native: '3 நாட்களுக்கு மேல்', phonetic: 'Moondru natkalukku mel' },
+        ],
+        zones: {
+          'Head/Neck': { native: 'தலை / கழுத்து', phonetic: 'Thalai / Kazhuthu', ask: 'உங்கள் தலை அல்லது கழுத்தில் வலிக்கிறதா?' },
+          'Chest/Heart': { native: 'நெஞ்சு / இதயம்', phonetic: 'Nenju / Ithayam', ask: 'உங்கள் நெஞ்சில் வலிக்கிறதா?' },
+          'Abdomen/Stomach': { native: 'வயிறு', phonetic: 'Vayiru', ask: 'உங்கள் வயிற்றில் வலிக்கிறதா?' },
+          'Pelvis/Hip': { native: 'இடுப்பு', phonetic: 'Iduppu', ask: 'உங்கள் இடுப்பில் வலிக்கிறதா?' },
+          'Right Arm': { native: 'வலது கை', phonetic: 'Valathu Kai', ask: 'உங்கள் வலது கையில் வலிக்கிறதா?' },
+          'Left Arm': { native: 'இடது கை', phonetic: 'Idathu Kai', ask: 'உங்கள் இடது கையில் வலிக்கிறதா?' },
+          'Right Leg': { native: 'வலது கால்', phonetic: 'Valathu Kaal', ask: 'உங்கள் வலது காலில் வலிக்கிறதா?' },
+          'Left Leg': { native: 'இடது கால்', phonetic: 'Idathu Kaal', ask: 'உங்கள் இடது காலில் வலிக்கிறதா?' },
+          'Back/Spine': { native: 'முதுகு / தண்டுவடம்', phonetic: 'Muthugu / Thanduvadam', ask: 'உங்கள் முதுகில் வலிக்கிறதா?' },
+        },
+        symptoms: [
+          { id: 'chest', en: 'Crushing Chest Pain', native: 'நெஞ்சில் கடுமையான வலி', phonetic: 'Nenjil kadumaiyana vali', code: 'SYM-01' },
+          { id: 'breathe', en: "Can't Breathe / Choking", native: 'மூச்சு விட முடியவில்லை', phonetic: 'Moochu vida mudiyavillai', code: 'SYM-02' },
+          { id: 'bleed', en: 'Severe Bleeding', native: 'அதிக இரத்தப்போக்கு', phonetic: 'Athiga irathappokku', code: 'SYM-03' },
+          { id: 'dizzy', en: 'Dizziness / Fainting', native: 'தலைசுற்றல் / மயக்கம்', phonetic: 'Thalaisutral / mayakkam', code: 'SYM-04' },
+          { id: 'numb', en: "Numbness / Can't Move Arm", native: 'கை மரத்துப் போயுள்ளது', phonetic: 'Kai marathu poyullathu', code: 'SYM-05' },
+          { id: 'fever', en: 'High Fever & Chills', native: 'அதிக காய்ச்சல் மற்றும் குளிர்', phonetic: 'Athiga kaichal matrum kulir', code: 'SYM-06' },
+          { id: 'burn', en: 'Burning / Chemical Injury', native: 'தீக்காயம் / எரிச்சல்', phonetic: 'Theekkayam / erichal', code: 'SYM-07' },
+          { id: 'stomach', en: 'Severe Stomach Pain', native: 'வயிற்றில் கடுமையான வலி', phonetic: 'Vayitril kadumaiyana vali', code: 'SYM-08' },
+        ],
+        history: [
+          { id: 'allergy_pen', en: 'ALLERGY: Penicillin / Antibiotics', native: 'பென்சிலின் ஒவ்வாமை', phonetic: 'Penicillin allergy ullatha?', isAllergy: true },
+          { id: 'allergy_sulfa', en: 'ALLERGY: Sulfa / Painkillers', native: 'வலி நிவாரணி ஒவ்வாமை', phonetic: 'Painkiller allergy ullatha?', isAllergy: true },
+          { id: 'cond_diab', en: 'Condition: Diabetic (Type 1/2)', native: 'சர்க்கரை நோய்', phonetic: 'Sarkkarai noi ullatha?', isAllergy: false },
+          { id: 'cond_bp', en: 'Condition: High BP / Heart', native: 'உயர் இரத்த அழுத்தம்', phonetic: 'High BP ullatha?', isAllergy: false },
+          { id: 'cond_asthma', en: 'Condition: Asthma / Inhaler', native: 'ஆஸ்துமா (மூச்சுத்திணறல்)', phonetic: 'Asthma ullatha?', isAllergy: false },
+          { id: 'cond_preg', en: 'Condition: Pregnant', native: 'கர்ப்பிணி', phonetic: 'Karppiniya?', isAllergy: false },
+        ],
+        phrases: [
+          {
+            native: 'எனக்கு ஆஸ்துமா உள்ளது, இப்போது சுத்தமாக மூச்சு விட முடியவில்லை',
+            en: 'I have asthma and cannot breathe right now.',
+            zones: ['Chest/Heart'],
+            symptoms: ["Can't Breathe / Choking"],
+            history: ['Condition: Asthma / Inhaler'],
+            pain: 9,
+            onset: 'Just Now (<30m)',
+          },
+          {
+            native: 'நெஞ்சில் கடுமையான வலி மற்றும் பென்சிலின் ஒவ்வாமை உள்ளது',
+            en: 'Severe chest pain and Penicillin allergy.',
+            zones: ['Chest/Heart'],
+            symptoms: ['Crushing Chest Pain'],
+            history: ['ALLERGY: Penicillin / Antibiotics'],
+            pain: 9,
+            onset: '1–6 Hours Ago',
+          },
+        ],
+        doctorQs: [
+          { en: 'Where exactly does it hurt?', native: 'சரியாக எந்த இடத்தில் வலிக்கிறது?', phonetic: 'Sariyaga entha idathil valikkirathu?' },
+          { en: 'Are you allergic to any medicine?', native: 'உங்களுக்கு ஏதேனும் மருந்து ஒவ்வாமை உள்ளதா?', phonetic: 'Ungalukku ethenum marunthu ovvamai ullatha?' },
+          { en: 'Have you eaten in the last 6 hours?', native: 'கடந்த 6 மணி நேரத்தில் ஏதாவது சாப்பிட்டீர்களா?', phonetic: 'Kadantha 6 mani nerathil ethavathu sappittirkala?' },
+          { en: 'Can you move your fingers and toes?', native: 'உங்கள் கை மற்றும் கால் விரல்களை அசைக்க முடியுமா?', phonetic: 'Ungal kai matrum kaal viralkalai asaikka mudiyuma?' },
+          { en: 'Please take a deep breath and hold it.', native: 'தயவுசெய்து ஆழமாக மூச்சை இழுத்து பிடிக்கவும்.', phonetic: 'Thayavuseithu azhamaga moochai izhuthu pidikkavum.' },
+          { en: 'Did you faint or lose consciousness?', native: 'நீங்கள் மயக்கம் அடைந்தீர்களா?', phonetic: 'Neengal mayakkam adainthirkala?' },
+          { en: 'Do you take any daily medicines?', native: 'நீங்கள் தினமும் ஏதேனும் மருந்து சாப்பிடுகிறீர்களா?', phonetic: 'Neengal thinamum ethenum marunthu sappidu-girirkala?' },
+          { en: 'We need to do a blood test and ECG.', native: 'இரத்தப் பரிசோதனை மற்றும் ஈசிஜி செய்ய வேண்டும்.', phonetic: 'Iratha parisothanai matrum ECG seyya vendum.' },
+          { en: 'We are giving you oxygen and pain relief now.', native: 'நாங்கள் இப்போது உங்களுக்கு ஆக்ஸிஜன் மற்றும் வலி நிவாரணி தருகிறோம்.', phonetic: 'Nangal ippothu ungalukku oxygen matrum vali nivarani tharugirom.' },
+          { en: 'Your family has been notified.', native: 'உங்கள் குடும்பத்தினருக்கு தகவல் தெரிவிக்கப்பட்டுள்ளது.', phonetic: 'Ungal kudumbathinarukku thagaval therivikkappattullathu.' },
+        ],
+        customVocab: {
+          'water': 'தண்ணீர் (Thanneer)',
+          'pain': 'வலி (Vali)',
+          'doctor': 'மருத்துவர் (Maruthuvar)',
+          'medicine': 'மருந்து (Marunthu)',
+          'breathe': 'மூச்சு விடுங்கள் (Moochu vidungal)',
+          'calm': 'அமைதியாக இருங்கள் (Amaithiyaga irungal)',
+          'sit': 'உட்காருங்கள் (Utkarungal)',
+          'lie down': 'படுத்துக் கொள்ளுங்கள் (Paduthu kollungal)',
+          'wait': 'காத்திருங்கள் (Kathirungal)',
+          'yes': 'ஆம் (Aam)',
+          'no': 'இல்லை (Illai)',
+        },
+        confirmPrefix: 'தயவுசெய்து உறுதிப்படுத்தவும்: நீங்கள் தெரிவித்துள்ளீர்கள் ',
+        confirmSuffix: '. இது சரியா?',
+      },
+
+      te: {
+        name: 'Telugu (తెలుగు)',
+        short: 'Telugu',
+        bcp47: 'te-IN',
+        tapPrompt: 'దయచేసి శరీరంలో ఎక్కడ నొప్పిగా ఉందో తాకి చూపించండి',
+        tapPromptPhonetic: 'Dayachesi shariramlo ekkada noppiga undo taki choopinchandi',
+        painPrompt: 'నొప్పి ఎంత తీవ్రంగా ఉంది? 1 నుండి 10 లోపు చెప్పండి',
+        onsetPrompt: 'ఈ సమస్య ఎప్పటి నుండి మొదలైంది?',
+        painLevels: [
+          { id: 'none', range: '0', score: 0, en: 'None', native: 'లేదు', phonetic: 'Ledu' },
+          { id: 'mild', range: '1–3', score: 2, en: 'Mild', native: 'స్వల్పం', phonetic: 'Swalpam' },
+          { id: 'moderate', range: '4–6', score: 5, en: 'Moderate', native: 'మధ్యస్థం', phonetic: 'Madhyastham' },
+          { id: 'severe', range: '7–8', score: 8, en: 'Severe', native: 'తీవ్రం', phonetic: 'Tivram' },
+          { id: 'extreme', range: '9–10', score: 10, en: 'Extreme', native: 'భరించలేని', phonetic: 'Bharinchaleni' },
+        ],
+        onsets: [
+          { id: 'now', en: 'Just Now (<30m)', native: 'ఇప్పుడే', phonetic: 'Ippude' },
+          { id: 'hours', en: '1–6 Hours Ago', native: 'కొన్ని గంటల క్రితం', phonetic: 'Konni gantala kritam' },
+          { id: 'yesterday', en: 'Since Yesterday', native: 'నిన్నటి నుండి', phonetic: 'Ninnati nundi' },
+          { id: 'days', en: '3+ Days', native: '3 రోజుల కంటే ఎక్కువ', phonetic: 'Mudu rojula kante ekkuva' },
+        ],
+        zones: {
+          'Head/Neck': { native: 'తల / మెడ', phonetic: 'Tala / Meda', ask: 'మీ తల లేదా మెడలో నొప్పిగా ఉందా?' },
+          'Chest/Heart': { native: 'ఛాతీ / గుండె', phonetic: 'Chhati / Gunde', ask: 'మీ ఛాతీలో నొప్పిగా ఉందా?' },
+          'Abdomen/Stomach': { native: 'కడుపు', phonetic: 'Kadupu', ask: 'మీ కడుపులో నొప్పిగా ఉందా?' },
+          'Pelvis/Hip': { native: 'నడుము / తుంటి', phonetic: 'Nadumu / Tunti', ask: 'మీ నడుములో నొప్పిగా ఉందా?' },
+          'Right Arm': { native: 'కుడి చేయి', phonetic: 'Kudi Cheyi', ask: 'మీ కుడి చేతిలో నొప్పిగా ఉందా?' },
+          'Left Arm': { native: 'ఎడమ చేయి', phonetic: 'Edama Cheyi', ask: 'మీ ఎడమ చేతిలో నొప్పిగా ఉందా?' },
+          'Right Leg': { native: 'కుడి కాలు', phonetic: 'Kudi Kalu', ask: 'మీ కుడి కాలిలో నొప్పిగా ఉందా?' },
+          'Left Leg': { native: 'ఎడమ కాలు', phonetic: 'Edama Kalu', ask: 'మీ ఎడమ కాలిలో నొప్పిగా ఉందా?' },
+          'Back/Spine': { native: 'వీపు / వెన్నెముక', phonetic: 'Veepu / Vennemuka', ask: 'మీ వీపులో నొప్పిగా ఉందా?' },
+        },
+        symptoms: [
+          { id: 'chest', en: 'Crushing Chest Pain', native: 'ఛాతీలో తీవ్రమైన నొప్పి', phonetic: 'Chhatilo tivramaina noppi', code: 'SYM-01' },
+          { id: 'breathe', en: "Can't Breathe / Choking", native: 'ఊపిరి ఆడటం లేదు', phonetic: 'Oopiri adatam ledu', code: 'SYM-02' },
+          { id: 'bleed', en: 'Severe Bleeding', native: 'తీవ్ర రక్తస్రావం', phonetic: 'Tivra raktasravam', code: 'SYM-03' },
+          { id: 'dizzy', en: 'Dizziness / Fainting', native: 'తలతిరగడం / మైకం', phonetic: 'Talatiragadam / maikam', code: 'SYM-04' },
+          { id: 'numb', en: "Numbness / Can't Move Arm", native: 'చేయి తిమ్మిరి / కదలడం లేదు', phonetic: 'Cheyi timmiri / kadaladam ledu', code: 'SYM-05' },
+          { id: 'fever', en: 'High Fever & Chills', native: 'తీవ్ర జ్వరం మరియు చలి', phonetic: 'Tivra jwaram mariyu chali', code: 'SYM-06' },
+          { id: 'burn', en: 'Burning / Chemical Injury', native: 'కాలిన గాయం / మంట', phonetic: 'Kalina gayam / manta', code: 'SYM-07' },
+          { id: 'stomach', en: 'Severe Stomach Pain', native: 'కడుపులో తీవ్రమైన నొప్పి', phonetic: 'Kadupulo tivramaina noppi', code: 'SYM-08' },
+        ],
+        history: [
+          { id: 'allergy_pen', en: 'ALLERGY: Penicillin / Antibiotics', native: 'పెన్సిలిన్ అలెర్జీ', phonetic: 'Penicillin allergy unda?', isAllergy: true },
+          { id: 'allergy_sulfa', en: 'ALLERGY: Sulfa / Painkillers', native: 'పెయిన్ కిల్లర్ అలెర్జీ', phonetic: 'Painkiller allergy unda?', isAllergy: true },
+          { id: 'cond_diab', en: 'Condition: Diabetic (Type 1/2)', native: 'మధుమేహం (షుగర్)', phonetic: 'Diabetes unda?', isAllergy: false },
+          { id: 'cond_bp', en: 'Condition: High BP / Heart', native: 'అధిక రక్తపోటు (BP)', phonetic: 'High BP unda?', isAllergy: false },
+          { id: 'cond_asthma', en: 'Condition: Asthma / Inhaler', native: 'ఆస్తమా (ఉబ్బసం)', phonetic: 'Asthma unda?', isAllergy: false },
+          { id: 'cond_preg', en: 'Condition: Pregnant', native: 'గర్భిణి', phonetic: 'Garbhini ayyara?', isAllergy: false },
+        ],
+        phrases: [
+          {
+            native: 'ఛాతీలో తీవ్రమైన నొప్పిగా ఉంది మరియు నాకు అధిక రక్తపోటు ఉంది',
+            en: 'Severe chest pain and I have high blood pressure.',
+            zones: ['Chest/Heart'],
+            symptoms: ['Crushing Chest Pain'],
+            history: ['Condition: High BP / Heart'],
+            pain: 9,
+            onset: '1–6 Hours Ago',
+          },
+        ],
+        doctorQs: [
+          { en: 'Where exactly does it hurt?', native: 'సరిగ్గా ఎక్కడ నొప్పిగా ఉంది?', phonetic: 'Sarigga ekkada noppiga undi?' },
+          { en: 'Are you allergic to any medicine?', native: 'మీకు ఏదైనా మందుల అలెర్జీ ఉందా?', phonetic: 'Meeku edaina mandula allergy unda?' },
+          { en: 'Have you eaten in the last 6 hours?', native: 'గత 6 గంటల్లో ఏమైనా తిన్నారా?', phonetic: 'Gata 6 gantallo emaina tinnara?' },
+          { en: 'Can you move your fingers and toes?', native: 'మీ చేతి మరియు కాలి వేళ్లను కదపగలరా?', phonetic: 'Mee cheti mariyu kali vellanu kadapagalara?' },
+          { en: 'Please take a deep breath and hold it.', native: 'దయచేసి లోతుగా శ్వాస తీసుకుని పట్టుకోండి.', phonetic: 'Dayachesi lotuga shwasa teesukoni pattukondi.' },
+          { en: 'Did you faint or lose consciousness?', native: 'మీరు స్పృహ తప్పారా?', phonetic: 'Meeru spruha tappara?' },
+          { en: 'Do you take any daily medicines?', native: 'మీరు ప్రతిరోజూ ఏవైనా మందులు వాడుతున్నారా?', phonetic: 'Meeru pratiroju evaina mandulu vadutunnara?' },
+          { en: 'We need to do a blood test and ECG.', native: 'మేము రక్త పరీక్ష మరియు ఈసీజీ చేయాలి.', phonetic: 'Memu rakta pariksha mariyu ECG cheyali.' },
+          { en: 'We are giving you oxygen and pain relief now.', native: 'మేము ఇప్పుడు మీకు ఆక్సిజన్ మరియు నొప్పి నివారణ మందు ఇస్తున్నాము.', phonetic: 'Memu ippudu meeku oxygen mariyu noppi nivarana mandu istunnamu.' },
+          { en: 'Your family has been notified.', native: 'మీ కుటుంబ సభ్యులకు సమాచారం అందించాము.', phonetic: 'Mee kutumba sabhyulaku samacharam andinchamu.' },
+        ],
+        customVocab: {
+          'water': 'నీళ్లు (Neellu)',
+          'pain': 'నొప్పి (Noppi)',
+          'doctor': 'డాక్టర్ (Doctor)',
+          'medicine': 'మందు (Mandu)',
+          'breathe': 'శ్వాస తీసుకోండి (Shwasa teesukondi)',
+          'calm': 'ప్రశాంతంగా ఉండండి (Prashantanga undandi)',
+          'sit': 'కూర్చోండి (Koorchondi)',
+          'lie down': 'పడుకోండి (Padukondi)',
+          'wait': 'వేచి ఉండండి (Vechi undandi)',
+          'yes': 'అవును (Avunu)',
+          'no': 'లేదు (Ledu)',
+        },
+        confirmPrefix: 'దయచేసి నిర్ధారించండి: మీరు తెలియజేశారు ',
+        confirmSuffix: '. ఇది సరైనదేనా?',
+      },
+
+      as: {
+        name: 'Assamese (অসমীয়া)',
+        short: 'Assamese',
+        bcp47: 'as-IN',
+        tapPrompt: 'অনুগ্ৰহ কৰি শৰীৰৰ ক’ত বিষ হৈছে স্পৰ্শ কৰি দেখুৱাওক',
+        tapPromptPhonetic: 'Anugraha kari sharirar kot bish hoise sparsha kari dekhuwaok',
+        painPrompt: 'বিষ কিমান তীব্ৰ? ১ ৰ পৰা ১০ ৰ ভিতৰত কওক',
+        onsetPrompt: 'এই সমস্যা কেতিয়াৰ পৰা আৰম্ভ হৈছে?',
+        painLevels: [
+          { id: 'none', range: '0', score: 0, en: 'None', native: 'নাই', phonetic: 'Nai' },
+          { id: 'mild', range: '1–3', score: 2, en: 'Mild', native: 'সামান্য', phonetic: 'Samanya' },
+          { id: 'moderate', range: '4–6', score: 5, en: 'Moderate', native: 'মজলীয়া', phonetic: 'Majaliya' },
+          { id: 'severe', range: '7–8', score: 8, en: 'Severe', native: 'তীব্ৰ', phonetic: 'Tibra' },
+          { id: 'extreme', range: '9–10', score: 10, en: 'Extreme', native: 'অসহ্য', phonetic: 'Asahya' },
+        ],
+        onsets: [
+          { id: 'now', en: 'Just Now (<30m)', native: 'এইমাত্ৰ', phonetic: 'Eimatra' },
+          { id: 'hours', en: '1–6 Hours Ago', native: 'কিছু ঘণ্টা আগতে', phonetic: 'Kichhu ghanta agate' },
+          { id: 'yesterday', en: 'Since Yesterday', native: 'যোৱাকালিৰ পৰা', phonetic: 'Jowakalir para' },
+          { id: 'days', en: '3+ Days', native: '৩ দিনতকৈ বেছি', phonetic: 'Tini dinatkoi beshi' },
+        ],
+        zones: {
+          'Head/Neck': { native: 'মূৰ / ডিঙি', phonetic: 'Mur / Dingi', ask: 'আপোনাৰ মূৰ বা ডিঙিত বিষ হৈছে নেকি?' },
+          'Chest/Heart': { native: 'বুকু / হৃদযন্ত্ৰ', phonetic: 'Buku / Hridyantra', ask: 'আপোনাৰ বুকুত বিষ হৈছে নেকি?' },
+          'Abdomen/Stomach': { native: 'পেট', phonetic: 'Pet', ask: 'আপোনাৰ পেটত বিষ হৈছে নেকি?' },
+          'Pelvis/Hip': { native: 'কঁকাল / পেলভিছ', phonetic: 'Kankal / Pelvis', ask: 'আপোনাৰ কঁকালত বিষ হৈছে নেকি?' },
+          'Right Arm': { native: 'সোঁ হাত', phonetic: 'Son Haat', ask: 'আপোনাৰ সোঁ হাতত বিষ হৈছে নেকি?' },
+          'Left Arm': { native: 'বাওঁ হাত', phonetic: 'Baon Haat', ask: 'আপোনাৰ বাওঁ হাতত বিষ হৈছে নেকি?' },
+          'Right Leg': { native: 'সোঁ ভৰি', phonetic: 'Son Bhori', ask: 'আপোনাৰ সোঁ ভৰিত বিষ হৈছে নেকি?' },
+          'Left Leg': { native: 'বাওঁ ভৰি', phonetic: 'Baon Bhori', ask: 'আপোনাৰ বাওঁ ভৰিত বিষ হৈছে নেকি?' },
+          'Back/Spine': { native: 'পিঠি / মেৰুদণ্ড', phonetic: 'Pithi / Merudanda', ask: 'আপোনাৰ পিঠিত বিষ হৈছে নেকি?' },
+        },
+        symptoms: [
+          { id: 'chest', en: 'Crushing Chest Pain', native: 'বুকুত তীব্ৰ বিষ', phonetic: 'Bukut tibra bish', code: 'SYM-01' },
+          { id: 'breathe', en: "Can't Breathe / Choking", native: 'উশাহ লোৱাত কষ্ট', phonetic: 'Ushah lowat kasta', code: 'SYM-02' },
+          { id: 'bleed', en: 'Severe Bleeding', native: 'তীব্ৰ ৰক্তক্ষৰণ', phonetic: 'Tibra raktaksharan', code: 'SYM-03' },
+          { id: 'dizzy', en: 'Dizziness / Fainting', native: 'মূৰ ঘূৰোৱা / অচেতন', phonetic: 'Mur ghurowa / achetan', code: 'SYM-04' },
+          { id: 'numb', en: "Numbness / Can't Move Arm", native: 'বাওঁ হাত অৱশ হৈ গৈছে', phonetic: 'Baon haat awash hoi goise', code: 'SYM-05' },
+          { id: 'fever', en: 'High Fever & Chills', native: 'তীব্ৰ জ্বৰ আৰু কঁপনি', phonetic: 'Tibra jwar aru kampani', code: 'SYM-06' },
+          { id: 'burn', en: 'Burning / Chemical Injury', native: 'জ্বলা-পোৰা আঘাত', phonetic: 'Jwala-pora aghat', code: 'SYM-07' },
+          { id: 'stomach', en: 'Severe Stomach Pain', native: 'পেটত তীব্ৰ বিষ', phonetic: 'Petat tibra bish', code: 'SYM-08' },
+        ],
+        history: [
+          { id: 'allergy_pen', en: 'ALLERGY: Penicillin / Antibiotics', native: 'পেনিচিলিন এলাৰ্জি', phonetic: 'Penicillin allergy ase neki?', isAllergy: true },
+          { id: 'allergy_sulfa', en: 'ALLERGY: Sulfa / Painkillers', native: 'বিষৰ দৰৱৰ এলাৰ্জি', phonetic: 'Painkiller allergy ase neki?', isAllergy: true },
+          { id: 'cond_diab', en: 'Condition: Diabetic (Type 1/2)', native: 'ডায়েবেটিছ (চুগাৰ)', phonetic: 'Diabetes ase neki?', isAllergy: false },
+          { id: 'cond_bp', en: 'Condition: High BP / Heart', native: 'উচ্চ ৰক্তচাপ (BP)', phonetic: 'High BP ase neki?', isAllergy: false },
+          { id: 'cond_asthma', en: 'Condition: Asthma / Inhaler', native: 'হাপানী (এজমা)', phonetic: 'Asthma ase neki?', isAllergy: false },
+          { id: 'cond_preg', en: 'Condition: Pregnant', native: 'গৰ্ভৱতী', phonetic: 'Garbhawati ase neki?', isAllergy: false },
+        ],
+        phrases: [
+          {
+            native: 'হঠাৎ মোৰ বাওঁ হাত অৱশ হৈ গৈছে আৰু মূৰ ঘূৰাই আছে, মোৰ উচ্চ ৰক্তচাপ আছে',
+            en: 'Sudden left arm numbness and dizziness, history of high blood pressure.',
+            zones: ['Left Arm', 'Head/Neck'],
+            symptoms: ["Numbness / Can't Move Arm", 'Dizziness / Fainting'],
+            history: ['Condition: High BP / Heart'],
+            pain: 8,
+            onset: 'Just Now (<30m)',
+          },
+        ],
+        doctorQs: [
+          { en: 'Where exactly does it hurt?', native: 'ঠিক কোনখিনিত বিষ হৈছে?', phonetic: 'Thik konkhinit bish hoise?' },
+          { en: 'Are you allergic to any medicine?', native: 'আপোনাৰ কোনো দৰৱৰ এলাৰ্জি আছে নেকি?', phonetic: 'Aponar kono dorowor allergy ase neki?' },
+          { en: 'Have you eaten in the last 6 hours?', native: 'যোৱা ৬ ঘণ্টাত কিবা খাইছে নেকি?', phonetic: 'Jowa 6 ghontat kiba khaise neki?' },
+          { en: 'Can you move your fingers and toes?', native: 'আপুনি হাত আৰু ভৰিৰ আঙুলি লৰাব পাৰিছে নেকি?', phonetic: 'Apuni haat aru bhorir anguli lorabo parise neki?' },
+          { en: 'Please take a deep breath and hold it.', native: 'অনুগ্ৰহ কৰি দীঘলকৈ উশাহ লওক আৰু ধৰি ৰাখক।', phonetic: 'Anugraha kari dighalkoi ushah laok aru dhari rakhak.' },
+          { en: 'Did you faint or lose consciousness?', native: 'আপুনি অচেতন হৈ পৰিছিল নেকি?', phonetic: 'Apuni achetan hoi porisil neki?' },
+          { en: 'Do you take any daily medicines?', native: 'আপুনি দৈনিক কোনো দৰৱ খায় নেকি?', phonetic: 'Apuni dainik kono dorow khay neki?' },
+          { en: 'We need to do a blood test and ECG.', native: 'আমাক তেজ পৰীক্ষা আৰু ইচিজি কৰিব লাগিব।', phonetic: 'Amak tej pariksha aru ECG koribo lagibo.' },
+          { en: 'We are giving you oxygen and pain relief now.', native: 'আমি এতিয়া আপোনাক অক্সিজেন আৰু বিষ কমোৱা দৰৱ দিছোঁ।', phonetic: 'Ami etiya aponak oxygen aru bish komowa dorow disu.' },
+          { en: 'Your family has been notified.', native: 'আপোনাৰ পৰিয়ালক খবৰ দিয়া হৈছে।', phonetic: 'Aponar poriyalok khobor diya hoise.' },
+        ],
+        customVocab: {
+          'water': 'পানী (Pani)',
+          'pain': 'বিষ (Bish)',
+          'doctor': 'ডাক্তৰ (Daktar)',
+          'medicine': 'দৰৱ (Dorow)',
+          'breathe': 'উশাহ লওক (Ushah laok)',
+          'calm': 'শান্ত থাকক (Shanta thakak)',
+          'sit': 'বহক (Bahak)',
+          'lie down': 'শুই পৰক (Shui parak)',
+          'wait': 'অপেক্ষা কৰক (Apeksha karak)',
+          'yes': 'হয় (Hoy)',
+          'no': 'নহয় (Nohoy)',
+        },
+        confirmPrefix: 'অনুগ্ৰহ কৰি নিশ্চিত কৰক: আপুনি জনাইছে ',
+        confirmSuffix: '। এইটো শুদ্ধ নে?',
+      },
+
+      mr: {
+        name: 'Marathi (मराठी)',
+        short: 'Marathi',
+        bcp47: 'mr-IN',
+        tapPrompt: 'कृपया शरीरावर जिथे दुखत आहे तिथे स्पर्श करा',
+        tapPromptPhonetic: 'Kripya shariravar jithe dukhat ahe tithe sparsha kara',
+        painPrompt: 'वेदना किती तीव्र आहेत? 1 ते 10 मध्ये सांगा',
+        onsetPrompt: 'हा त्रास कधीपासून सुरू झाला आहे?',
+        painLevels: [
+          { id: 'none', range: '0', score: 0, en: 'None', native: 'नाही', phonetic: 'Nahi' },
+          { id: 'mild', range: '1–3', score: 2, en: 'Mild', native: 'सौम्य', phonetic: 'Saumya' },
+          { id: 'moderate', range: '4–6', score: 5, en: 'Moderate', native: 'मध्यम', phonetic: 'Madhyam' },
+          { id: 'severe', range: '7–8', score: 8, en: 'Severe', native: 'तीव्र', phonetic: 'Tivra' },
+          { id: 'extreme', range: '9–10', score: 10, en: 'Extreme', native: 'असह्य', phonetic: 'Asahya' },
+        ],
+        onsets: [
+          { id: 'now', en: 'Just Now (<30m)', native: 'आत्ताच', phonetic: 'Attacha' },
+          { id: 'hours', en: '1–6 Hours Ago', native: 'काही तासांपूर्वी', phonetic: 'Kahi tasanpurvi' },
+          { id: 'yesterday', en: 'Since Yesterday', native: 'कालपासून', phonetic: 'Kalpasun' },
+          { id: 'days', en: '3+ Days', native: '3 दिवसांपेक्षा जास्त', phonetic: 'Teen divasanpeksha jasta' },
+        ],
+        zones: {
+          'Head/Neck': { native: 'डोके / मान', phonetic: 'Doke / Maan', ask: 'तुमच्या डोक्यात किंवा मानेत दुखत आहे का?' },
+          'Chest/Heart': { native: 'छाती / हृदय', phonetic: 'Chhati / Hriday', ask: 'तुमच्या छातीत दुखत आहे का?' },
+          'Abdomen/Stomach': { native: 'पोट', phonetic: 'Pot', ask: 'तुमच्या पोटात दुखत आहे का?' },
+          'Pelvis/Hip': { native: 'कंबर / पेल्विस', phonetic: 'Kambar / Pelvis', ask: 'तुमच्या कंबरेत दुखत आहे का?' },
+          'Right Arm': { native: 'उजवा हात', phonetic: 'Ujva Haat', ask: 'तुमच्या उजव्या हातात दुखत आहे का?' },
+          'Left Arm': { native: 'डावा हात', phonetic: 'Dava Haat', ask: 'तुमच्या डाव्या हातात दुखत आहे का?' },
+          'Right Leg': { native: 'उजवा पाय', phonetic: 'Ujva Pay', ask: 'तुमच्या उजव्या पायात दुखत आहे का?' },
+          'Left Leg': { native: 'डावा पाय', phonetic: 'Dava Pay', ask: 'तुमच्या डाव्या पायात दुखत आहे का?' },
+          'Back/Spine': { native: 'पाठ / मणका', phonetic: 'Paath / Manka', ask: 'तुमच्या पाठीत दुखत आहे का?' },
+        },
+        symptoms: [
+          { id: 'chest', en: 'Crushing Chest Pain', native: 'छातीत तीव्र वेदना', phonetic: 'Chhatit tivra vedana', code: 'SYM-01' },
+          { id: 'breathe', en: "Can't Breathe / Choking", native: 'श्वास घेण्यास त्रास', phonetic: 'Shwas ghenyas tras', code: 'SYM-02' },
+          { id: 'bleed', en: 'Severe Bleeding', native: 'तीव्र रक्तस्त्राव', phonetic: 'Tivra raktastrav', code: 'SYM-03' },
+          { id: 'dizzy', en: 'Dizziness / Fainting', native: 'चक्कर येणे', phonetic: 'Chakkar yene', code: 'SYM-04' },
+          { id: 'numb', en: "Numbness / Can't Move Arm", native: 'हात बधिर होणे', phonetic: 'Haat badhir hone', code: 'SYM-05' },
+          { id: 'fever', en: 'High Fever & Chills', native: 'तीव्र ताप आणि थंडी', phonetic: 'Tivra tap ani thandi', code: 'SYM-06' },
+          { id: 'burn', en: 'Burning / Chemical Injury', native: 'भाजणे / जळजळ', phonetic: 'Bhajne / jaljal', code: 'SYM-07' },
+          { id: 'stomach', en: 'Severe Stomach Pain', native: 'पोटात तीव्र दुखणे', phonetic: 'Potat tivra dukhne', code: 'SYM-08' },
+        ],
+        history: [
+          { id: 'allergy_pen', en: 'ALLERGY: Penicillin / Antibiotics', native: 'पेनिसिलिन अ‍ॅलर्जी', phonetic: 'Penicillin allergy ahe ka?', isAllergy: true },
+          { id: 'allergy_sulfa', en: 'ALLERGY: Sulfa / Painkillers', native: 'वेदनाशामक अ‍ॅलर्जी', phonetic: 'Painkiller allergy ahe ka?', isAllergy: true },
+          { id: 'cond_diab', en: 'Condition: Diabetic (Type 1/2)', native: 'मधुमेह (शुगर)', phonetic: 'Diabetes ahe ka?', isAllergy: false },
+          { id: 'cond_bp', en: 'Condition: High BP / Heart', native: 'उच्च रक्तदाब (BP)', phonetic: 'High BP ahe ka?', isAllergy: false },
+          { id: 'cond_asthma', en: 'Condition: Asthma / Inhaler', native: 'दमा (अस्थमा)', phonetic: 'Asthma ahe ka?', isAllergy: false },
+          { id: 'cond_preg', en: 'Condition: Pregnant', native: 'गर्भवती', phonetic: 'Garbhavati ahat ka?', isAllergy: false },
+        ],
+        phrases: [
+          {
+            native: 'छातीत खूप दुखत आहे आणि मला उच्च रक्तदाबाचा त्रास आहे',
+            en: 'Severe chest pain and history of high blood pressure.',
+            zones: ['Chest/Heart'],
+            symptoms: ['Crushing Chest Pain'],
+            history: ['Condition: High BP / Heart'],
+            pain: 9,
+            onset: '1–6 Hours Ago',
+          },
+        ],
+        doctorQs: [
+          { en: 'Where exactly does it hurt?', native: 'नेमके कुठे दुखत आहे?', phonetic: 'Nemke kuthe dukhat ahe?' },
+          { en: 'Are you allergic to any medicine?', native: 'तुम्हाला कोणत्या औषधाची अ‍ॅलर्जी आहे का?', phonetic: 'Tumhala konatya aushadhachi allergy ahe ka?' },
+          { en: 'Have you eaten in the last 6 hours?', native: 'गेल्या ६ तासांत तुम्ही काही खाल्ले आहे का?', phonetic: 'Gelya 6 tasant tumhi kahi khalle ahe ka?' },
+          { en: 'Can you move your fingers and toes?', native: 'तुम्ही हाताची आणि पायाची बोटे हलवू शकता का?', phonetic: 'Tumhi hatachi ani payachi bote halvu shakta ka?' },
+          { en: 'Please take a deep breath and hold it.', native: 'कृपया दीर्घ श्वास घ्या आणि धरून ठेवा.', phonetic: 'Kripya dirgha shwas ghya ani dharun theva.' },
+          { en: 'Did you faint or lose consciousness?', native: 'तुम्ही बेशुद्ध पडला होता का?', phonetic: 'Tumhi beshuddha padla hota ka?' },
+          { en: 'Do you take any daily medicines?', native: 'तुम्ही दररोज कोणते औषध घेता का?', phonetic: 'Tumhi darroj konte aushadh gheta ka?' },
+          { en: 'We need to do a blood test and ECG.', native: 'आम्हाला रक्त तपासणी आणि ईसीजी करावी लागेल.', phonetic: 'Amhala rakta tapasani ani ECG karavi lagel.' },
+          { en: 'We are giving you oxygen and pain relief now.', native: 'आम्ही आता तुम्हाला ऑक्सिजन आणि वेदनाशामक औषध देत आहोत.', phonetic: 'Amhi ata tumhala oxygen ani vednashamak aushadh det ahot.' },
+          { en: 'Your family has been notified.', native: 'तुमच्या कुटुंबियांना कळवण्यात आले आहे.', phonetic: 'Tumchya kutumbiyanna kalavanyat ale ahe.' },
+        ],
+        customVocab: {
+          'water': 'पाणी (Pani)',
+          'pain': 'वेदना (Vedana)',
+          'doctor': 'डॉक्टर (Doctor)',
+          'medicine': 'औषध (Aushadh)',
+          'breathe': 'श्वास घ्या (Shwas ghya)',
+          'calm': 'शांत रहा (Shant raha)',
+          'sit': 'बसा (Basa)',
+          'lie down': 'झोपा (Zopa)',
+          'wait': 'थांबा (Thamba)',
+          'yes': 'होय (Hoy)',
+          'no': 'नाही (Nahi)',
+        },
+        confirmPrefix: 'कृपया खात्री करा: तुम्ही सांगितले आहे ',
+        confirmSuffix: '. हे बरोबर आहे का?',
+      },
+
+      gu: {
+        name: 'Gujarati (ગુજરાતી)',
+        short: 'Gujarati',
+        bcp47: 'gu-IN',
+        tapPrompt: 'કૃપા કરીને શરીરમાં જ્યાં દુખાવો થાય છે ત્યાં સ્પર્શ કરો',
+        tapPromptPhonetic: 'Kripa karine sharirma jyan dukhavo thay chhe tyan sparsh karo',
+        painPrompt: 'દુખાવો કેટલો તીવ્ર છે? 1 થી 10 માં કહો',
+        onsetPrompt: 'આ તકલીફ ક્યારથી શરૂ થઈ છે?',
+        painLevels: [
+          { id: 'none', range: '0', score: 0, en: 'None', native: 'નથી', phonetic: 'Nathi' },
+          { id: 'mild', range: '1–3', score: 2, en: 'Mild', native: 'હળવો', phonetic: 'Halvo' },
+          { id: 'moderate', range: '4–6', score: 5, en: 'Moderate', native: 'મધ્યમ', phonetic: 'Madhyam' },
+          { id: 'severe', range: '7–8', score: 8, en: 'Severe', native: 'તીવ્ર', phonetic: 'Tivra' },
+          { id: 'extreme', range: '9–10', score: 10, en: 'Extreme', native: 'અસહ્ય', phonetic: 'Asahya' },
+        ],
+        onsets: [
+          { id: 'now', en: 'Just Now (<30m)', native: 'હમણાં જ', phonetic: 'Hamna j' },
+          { id: 'hours', en: '1–6 Hours Ago', native: 'થોડા કલાકો પહેલા', phonetic: 'Thoda kalako pehla' },
+          { id: 'yesterday', en: 'Since Yesterday', native: 'ગઈકાલથી', phonetic: 'Gaikalthi' },
+          { id: 'days', en: '3+ Days', native: '3 દિવસથી વધુ', phonetic: 'Tran divasthi vadhu' },
+        ],
+        zones: {
+          'Head/Neck': { native: 'માથું / ગરદન', phonetic: 'Mathun / Gardan', ask: 'શું તમને માથા કે ગરદનમાં દુખાવો છે?' },
+          'Chest/Heart': { native: 'છાતી / હૃદય', phonetic: 'Chhati / Hriday', ask: 'શું તમને છાતીમાં દુખાવો થાય છે?' },
+          'Abdomen/Stomach': { native: 'પેટ', phonetic: 'Pet', ask: 'શું તમને પેટમાં દુખાવો થાય છે?' },
+          'Pelvis/Hip': { native: 'કમર / પેલ્વિસ', phonetic: 'Kamar / Pelvis', ask: 'શું તમને કમરમાં દુખાવો છે?' },
+          'Right Arm': { native: 'જમણો હાથ', phonetic: 'Jamno Hath', ask: 'શું તમને જમણા હાથમાં દુખાવો છે?' },
+          'Left Arm': { native: 'ડાબો હાથ', phonetic: 'Dabo Hath', ask: 'શું તમને ડાબા હાથમાં દુખાવો છે?' },
+          'Right Leg': { native: 'જમણો પગ', phonetic: 'Jamno Pag', ask: 'શું તમને જમણા પગમાં દુખાવો છે?' },
+          'Left Leg': { native: 'ડાબો પગ', phonetic: 'Dabo Pag', ask: 'શું તમને ડાબા પગમાં દુખાવો છે?' },
+          'Back/Spine': { native: 'પીઠ / કરોડરજ્જુ', phonetic: 'Peeth / Karodrajju', ask: 'શું તમને પીઠમાં દુખાવો થાય છે?' },
+        },
+        symptoms: [
+          { id: 'chest', en: 'Crushing Chest Pain', native: 'છાતીમાં તીવ્ર દુખાવો', phonetic: 'Chhatima tivra dukhavo', code: 'SYM-01' },
+          { id: 'breathe', en: "Can't Breathe / Choking", native: 'શ્વાસ લેવામાં તકલીફ', phonetic: 'Shwas levama taklif', code: 'SYM-02' },
+          { id: 'bleed', en: 'Severe Bleeding', native: 'ભારે રક્તસ્રાવ', phonetic: 'Bhare raktasrav', code: 'SYM-03' },
+          { id: 'dizzy', en: 'Dizziness / Fainting', native: 'ચક્કર આવવા', phonetic: 'Chakkar avva', code: 'SYM-04' },
+          { id: 'numb', en: "Numbness / Can't Move Arm", native: 'હાથ સુન્ન થઈ ગયો છે', phonetic: 'Hath sunn thai gayo chhe', code: 'SYM-05' },
+          { id: 'fever', en: 'High Fever & Chills', native: 'તીવ્ર તાવ અને ઠંડી', phonetic: 'Tivra tav ane thandi', code: 'SYM-06' },
+          { id: 'burn', en: 'Burning / Chemical Injury', native: 'દાઝવું / બળતરા', phonetic: 'Dazvun / baltara', code: 'SYM-07' },
+          { id: 'stomach', en: 'Severe Stomach Pain', native: 'પેટમાં તીવ્ર દુખાવો', phonetic: 'Petma tivra dukhavo', code: 'SYM-08' },
+        ],
+        history: [
+          { id: 'allergy_pen', en: 'ALLERGY: Penicillin / Antibiotics', native: 'પેનિસિલિન એલર્જી', phonetic: 'Penicillin allergy chhe?', isAllergy: true },
+          { id: 'allergy_sulfa', en: 'ALLERGY: Sulfa / Painkillers', native: 'પેઇનકિલર એલર્જી', phonetic: 'Painkiller allergy chhe?', isAllergy: true },
+          { id: 'cond_diab', en: 'Condition: Diabetic (Type 1/2)', native: 'ડાયાબિટીસ (સુગર)', phonetic: 'Diabetes chhe?', isAllergy: false },
+          { id: 'cond_bp', en: 'Condition: High BP / Heart', native: 'હાઈ બીપી / હૃદય રોગ', phonetic: 'High BP chhe?', isAllergy: false },
+          { id: 'cond_asthma', en: 'Condition: Asthma / Inhaler', native: 'અસ્થમા (દમ)', phonetic: 'Asthma chhe?', isAllergy: false },
+          { id: 'cond_preg', en: 'Condition: Pregnant', native: 'ગર્ભવતી', phonetic: 'Garbhavati chho?', isAllergy: false },
+        ],
+        phrases: [
+          {
+            native: 'છાતીમાં ખૂબ જ દુખાવો થાય છે અને મને ડાયાબિટીસ છે',
+            en: 'Severe chest pain and I have diabetes.',
+            zones: ['Chest/Heart'],
+            symptoms: ['Crushing Chest Pain'],
+            history: ['Condition: Diabetic (Type 1/2)'],
+            pain: 9,
+            onset: '1–6 Hours Ago',
+          },
+        ],
+        doctorQs: [
+          { en: 'Where exactly does it hurt?', native: 'બરાબર કઈ જગ્યાએ દુખાવો થાય છે?', phonetic: 'Barabar kai jagyae dukhavo thay chhe?' },
+          { en: 'Are you allergic to any medicine?', native: 'શું તમને કોઈ દવાની એલર્જી છે?', phonetic: 'Shu tamne koi davani allergy chhe?' },
+          { en: 'Have you eaten in the last 6 hours?', native: 'શું તમે છેલ્લા ૬ કલાકમાં કંઈ ખાધું છે?', phonetic: 'Shu tame chhella 6 kalakma kai khadhu chhe?' },
+          { en: 'Can you move your fingers and toes?', native: 'શું તમે હાથ અને પગની આંગળીઓ હલાવી શકો છો?', phonetic: 'Shu tame hath ane pagni angalio halavi shako chho?' },
+          { en: 'Please take a deep breath and hold it.', native: 'કૃપા કરીને ઊંડો શ્વાસ લો અને રોકી રાખો.', phonetic: 'Kripa karine undo shwas lo ane roki rakho.' },
+          { en: 'Did you faint or lose consciousness?', native: 'શું તમે બેભાન થઈ ગયા હતા?', phonetic: 'Shu tame bebhan thai gaya hata?' },
+          { en: 'Do you take any daily medicines?', native: 'શું તમે દરરોજ કોઈ દવા લો છો?', phonetic: 'Shu tame darroj koi dava lo chho?' },
+          { en: 'We need to do a blood test and ECG.', native: 'અમારે લોહીની તપાસ અને ઈસીજી કરવું પડશે.', phonetic: 'Amare lohini tapas ane ECG karvu padshe.' },
+          { en: 'We are giving you oxygen and pain relief now.', native: 'અમે હમણાં તમને ઓક્સિજન અને દુખાવાની દવા આપી રહ્યા છીએ.', phonetic: 'Ame hamna tamne oxygen ane dukhavani dava api rahya chhie.' },
+          { en: 'Your family has been notified.', native: 'તમારા પરિવારને જાણ કરવામાં આવી છે.', phonetic: 'Tamara parivarne jan karvama avi chhe.' },
+        ],
+        customVocab: {
+          'water': 'પાણી (Pani)',
+          'pain': 'દુખાવો (Dukhavo)',
+          'doctor': 'ડૉક્ટર (Doctor)',
+          'medicine': 'દવા (Dava)',
+          'breathe': 'શ્વાસ લો (Shwas lo)',
+          'calm': 'શાંત રહો (Shant raho)',
+          'sit': 'બેસો (Beso)',
+          'lie down': 'સૂઈ જાઓ (Sui jao)',
+          'wait': 'રાહ જુઓ (Rah juo)',
+          'yes': 'હા (Ha)',
+          'no': 'ના (Na)',
+        },
+        confirmPrefix: 'કૃપા કરીને ખાતરી કરો: તમે જણાવ્યું છે ',
+        confirmSuffix: '. શું આ સાચું છે?',
+      },
+
+      ml: {
+        name: 'Malayalam (മലയാളം)',
+        short: 'Malayalam',
+        bcp47: 'ml-IN',
+        tapPrompt: 'ദയവായി ശരീരത്തിൽ എവിടെയാണ് വേദനയെന്ന് തൊട്ടു കാണിക്കുക',
+        tapPromptPhonetic: 'Dayavayi sharirathil evideyanu vedanayennu thottu kanikkuka',
+        painPrompt: 'വേദന എത്രത്തോളം കഠിനമാണ്? 1 മുതൽ 10 വരെ പറയുക',
+        onsetPrompt: 'ഈ പ്രശ്നം എപ്പോഴാണ് തുടങ്ങിയത്?',
+        painLevels: [
+          { id: 'none', range: '0', score: 0, en: 'None', native: 'ഇല്ല', phonetic: 'Illa' },
+          { id: 'mild', range: '1–3', score: 2, en: 'Mild', native: 'ചെറിയ', phonetic: 'Cheriya' },
+          { id: 'moderate', range: '4–6', score: 5, en: 'Moderate', native: 'മിതമായ', phonetic: 'Mithamaya' },
+          { id: 'severe', range: '7–8', score: 8, en: 'Severe', native: 'കഠിനമായ', phonetic: 'Kadinamaya' },
+          { id: 'extreme', range: '9–10', score: 10, en: 'Extreme', native: 'സഹിക്കാൻ വയ്യാത്ത', phonetic: 'Sahikkan vayyatha' },
+        ],
+        onsets: [
+          { id: 'now', en: 'Just Now (<30m)', native: 'ഇപ്പോൾ മാത്രം', phonetic: 'Ippol mathram' },
+          { id: 'hours', en: '1–6 Hours Ago', native: 'കുറച്ച് മണിക്കൂർ മുമ്പ്', phonetic: 'Kurachu manikkoor mumbu' },
+          { id: 'yesterday', en: 'Since Yesterday', native: 'ഇന്നലെ മുതൽ', phonetic: 'Innale muthal' },
+          { id: 'days', en: '3+ Days', native: '3 ദിവസത്തിൽ കൂടുതൽ', phonetic: 'Moonnu divasathil kooduthal' },
+        ],
+        zones: {
+          'Head/Neck': { native: 'തല / കഴുത്ത്', phonetic: 'Thala / Kazhuthu', ask: 'നിങ്ങളുടെ തലയിലോ കഴുത്തിലോ വേദനയുണ്ടോ?' },
+          'Chest/Heart': { native: 'നെഞ്ച് / ഹൃദയം', phonetic: 'Nenju / Hrudayam', ask: 'നിങ്ങളുടെ നെഞ്ചിൽ വേദനയുണ്ടോ?' },
+          'Abdomen/Stomach': { native: 'വയറ്', phonetic: 'Vayaru', ask: 'നിങ്ങളുടെ വയറ്റിൽ വേദനയുണ്ടോ?' },
+          'Pelvis/Hip': { native: 'അരക്കെട്ട് / പെൽവിസ്', phonetic: 'Arakkettu / Pelvis', ask: 'നിങ്ങളുടെ അരക്കെട്ടിൽ വേദനയുണ്ടോ?' },
+          'Right Arm': { native: 'വലതു കൈ', phonetic: 'Valathu Kai', ask: 'നിങ്ങളുടെ വലതു കയ്യിൽ വേദനയുണ്ടോ?' },
+          'Left Arm': { native: 'ഇടതു കൈ', phonetic: 'Idathu Kai', ask: 'നിങ്ങളുടെ ഇടതു കയ്യിൽ വേദനയുണ്ടോ?' },
+          'Right Leg': { native: 'വലതു കാൽ', phonetic: 'Valathu Kaal', ask: 'നിങ്ങളുടെ വലതു കാലിൽ വേദനയുണ്ടോ?' },
+          'Left Leg': { native: 'ഇടതു കാൽ', phonetic: 'Idathu Kaal', ask: 'നിങ്ങളുടെ ഇടതു കാലിൽ വേദനയുണ്ടോ?' },
+          'Back/Spine': { native: 'പുറം / നട്ടെല്ല്', phonetic: 'Puram / Nattellu', ask: 'നിങ്ങളുടെ പുറം വേദനിക്കുന്നുണ്ടോ?' },
+        },
+        symptoms: [
+          { id: 'chest', en: 'Crushing Chest Pain', native: 'നെഞ്ചിൽ കഠിനമായ വേദന', phonetic: 'Nenjil kadinamaya vedana', code: 'SYM-01' },
+          { id: 'breathe', en: "Can't Breathe / Choking", native: 'ശ്വാസം മുട്ടൽ', phonetic: 'Shwasam muttal', code: 'SYM-02' },
+          { id: 'bleed', en: 'Severe Bleeding', native: 'അമിത രക്തസ്രാവം', phonetic: 'Amitha raktasravam', code: 'SYM-03' },
+          { id: 'dizzy', en: 'Dizziness / Fainting', native: 'തലകറക്കം / ബോധക്ഷയം', phonetic: 'Thalakarakkam / bodhakshayam', code: 'SYM-04' },
+          { id: 'numb', en: "Numbness / Can't Move Arm", native: 'കൈ മരവിപ്പ്', phonetic: 'Kai maravippu', code: 'SYM-05' },
+          { id: 'fever', en: 'High Fever & Chills', native: 'കടുത്ത പനിയും വിറയലും', phonetic: 'Kadutha paniyum virayalum', code: 'SYM-06' },
+          { id: 'burn', en: 'Burning / Chemical Injury', native: 'പൊള്ളൽ / നീറ്റൽ', phonetic: 'Pollal / neettal', code: 'SYM-07' },
+          { id: 'stomach', en: 'Severe Stomach Pain', native: 'വയറ്റിൽ കഠിനമായ വേദന', phonetic: 'Vayatril kadinamaya vedana', code: 'SYM-08' },
+        ],
+        history: [
+          { id: 'allergy_pen', en: 'ALLERGY: Penicillin / Antibiotics', native: 'പെൻസിലിൻ അലർജി', phonetic: 'Penicillin allergy undo?', isAllergy: true },
+          { id: 'allergy_sulfa', en: 'ALLERGY: Sulfa / Painkillers', native: 'വേദനസംഹാരി അലർജി', phonetic: 'Painkiller allergy undo?', isAllergy: true },
+          { id: 'cond_diab', en: 'Condition: Diabetic (Type 1/2)', native: 'പ്രമേഹം (ഷുഗർ)', phonetic: 'Diabetes undo?', isAllergy: false },
+          { id: 'cond_bp', en: 'Condition: High BP / Heart', native: 'ഉയർന്ന രക്തസമ്മർദ്ദം', phonetic: 'High BP undo?', isAllergy: false },
+          { id: 'cond_asthma', en: 'Condition: Asthma / Inhaler', native: 'ആസ്ത്മ (ശ്വാസംമുട്ടൽ)', phonetic: 'Asthma undo?', isAllergy: false },
+          { id: 'cond_preg', en: 'Condition: Pregnant', native: 'ഗർഭിണി', phonetic: 'Garbhini aano?', isAllergy: false },
+        ],
+        phrases: [
+          {
+            native: 'നെഞ്ചിൽ കഠിനമായ വേദനയുണ്ട്, എനിക്ക് പ്രമേഹവും ഉണ്ട്',
+            en: 'Severe chest pain and I am diabetic.',
+            zones: ['Chest/Heart'],
+            symptoms: ['Crushing Chest Pain'],
+            history: ['Condition: Diabetic (Type 1/2)'],
+            pain: 9,
+            onset: '1–6 Hours Ago',
+          },
+        ],
+        doctorQs: [
+          { en: 'Where exactly does it hurt?', native: 'കൃത്യമായി എവിടെയാണ് വേദനിക്കുന്നത്?', phonetic: 'Krithyamayi evideyanu vedanikkunnath?' },
+          { en: 'Are you allergic to any medicine?', native: 'നിങ്ങൾക്ക് ഏതെങ്കിലും മരുന്നിനോട് അലർജിയുണ്ടോ?', phonetic: 'Ningalkku ethenkilum marunninodu allergy undo?' },
+          { en: 'Have you eaten in the last 6 hours?', native: 'കഴിഞ്ഞ 6 മണിക്കൂറിനുള്ളിൽ എന്തെങ്കിലും കഴിച്ചിരുന്നോ?', phonetic: 'Kazhinja 6 manikkoorinullil enthenkilum kazhichirunno?' },
+          { en: 'Can you move your fingers and toes?', native: 'നിങ്ങളുടെ കൈകാലുകളിലെ വിരലുകൾ അനക്കാൻ കഴിയുന്നുണ്ടോ?', phonetic: 'Ningalude kaikalukalile viralukal anakkan kazhiyunnundo?' },
+          { en: 'Please take a deep breath and hold it.', native: 'ദയവായി ദീർഘമായി ശ്വാസം എടുത്ത് പിടിക്കുക.', phonetic: 'Dayavayi dirghamayi shwasam eduthu pidikkuka.' },
+          { en: 'Did you faint or lose consciousness?', native: 'നിങ്ങൾക്ക് ബോധക്ഷയം ഉണ്ടായിരുന്നോ?', phonetic: 'Ningalkku bodhakshayam undayirunno?' },
+          { en: 'Do you take any daily medicines?', native: 'നിങ്ങൾ ദിവസവും എന്തെങ്കിലും മരുന്ന് കഴിക്കുന്നുണ്ടോ?', phonetic: 'Ningal divasavum enthenkilum marunnu kazhikkunnundo?' },
+          { en: 'We need to do a blood test and ECG.', native: 'രക്തപരിശോധനയും ഇസിജിയും ചെയ്യേണ്ടതുണ്ട്.', phonetic: 'Raktaparishodhanayum ECG-yum cheyyendathundu.' },
+          { en: 'We are giving you oxygen and pain relief now.', native: 'ഞങ്ങൾ ഇപ്പോൾ നിങ്ങൾക്ക് ഓക്സിജനും വേദനസംഹാരിയും നൽകുന്നുണ്ട്.', phonetic: 'Njangal ippol ningalkku oxygenum vedanasamhariyum nalkunnundu.' },
+          { en: 'Your family has been notified.', native: 'നിങ്ങളുടെ കുടുംബത്തെ വിവരം അറിയിച്ചിട്ടുണ്ട്.', phonetic: 'Ningalude kudumbathe vivaram ariyichittundu.' },
+        ],
+        customVocab: {
+          'water': 'വെള്ളം (Vellam)',
+          'pain': 'വേദന (Vedana)',
+          'doctor': 'ഡോക്ടർ (Doctor)',
+          'medicine': 'മരുന്ന് (Marunnu)',
+          'breathe': 'ശ്വാസം എടുക്കുക (Shwasam edukkuka)',
+          'calm': 'ശാന്തമായിരിക്കുക (Shanthamayirikkuka)',
+          'sit': 'ഇരിക്കുക (Irikkuka)',
+          'lie down': 'കിടക്കുക (Kidakkuka)',
+          'wait': 'കാത്തിരിക്കുക (Kathirikkuka)',
+          'yes': 'അതെ (Athe)',
+          'no': 'ഇല്ല (Illa)',
+        },
+        confirmPrefix: 'ദയവായി ഉറപ്പുവരുത്തുക: നിങ്ങൾ അറിയിച്ചിട്ടുണ്ട് ',
+        confirmSuffix: '. ഇത് ശരിയാണോ?',
+      },
+    };
+
+    // 2. SIX CLINICAL CASE PRESETS
+    const DEMO_CASES = [
+      {
+        label: 'Case 01: Chest Pain (Odia)',
+        lang: 'or',
+        zones: ['Chest/Heart', 'Left Arm'],
+        painLevelId: 'extreme',
+        painScore: 9,
+        onset: '1–6 Hours Ago',
+        symptoms: ['Crushing Chest Pain', "Can't Breathe / Choking"],
+        history: ['ALLERGY: Penicillin / Antibiotics'],
+        spokenNative: 'ମୋ ଛାତିରେ ପ୍ରବଳ ଯନ୍ତ୍ରଣା ହେଉଛି ଏବଂ ମୋର ପେନିସିଲିନ୍ ଆଲର୍ଜି ଅଛି',
+        spokenEn: 'Crushing chest pain radiating to left arm; patient reports Penicillin allergy.',
+      },
+      {
+        label: 'Case 02: Stroke Signs (Assamese)',
+        lang: 'as',
+        zones: ['Left Arm', 'Head/Neck'],
+        painLevelId: 'severe',
+        painScore: 8,
+        onset: 'Just Now (<30m)',
+        symptoms: ["Numbness / Can't Move Arm", 'Dizziness / Fainting'],
+        history: ['Condition: High BP / Heart'],
+        spokenNative: 'হঠাৎ মোৰ বাওঁ হাত অৱশ হৈ গৈছে আৰু মূৰ ঘূৰাই আছে, মোৰ উচ্চ ৰক্তচাপ আছে',
+        spokenEn: 'Sudden left-side arm numbness & dizziness; history of hypertension.',
+      },
+      {
+        label: 'Case 03: Chemical Burn (Bengali)',
+        lang: 'bn',
+        zones: ['Right Arm', 'Head/Neck'],
+        painLevelId: 'severe',
+        painScore: 8,
+        onset: 'Just Now (<30m)',
+        symptoms: ['Burning / Chemical Injury'],
+        history: ['Condition: Diabetic (Type 1/2)'],
+        spokenNative: 'কারখানায় কেমিক্যাল লেগে ডান হাত ও চোখ জ্বলছে, আমার ডায়াবেটিস আছে',
+        spokenEn: 'Chemical splash injury to right hand and eye; Type-2 Diabetic.',
+      },
+      {
+        label: 'Case 04: Trauma / Bleeding (Hindi)',
+        lang: 'hi',
+        zones: ['Head/Neck', 'Right Leg'],
+        painLevelId: 'severe',
+        painScore: 8,
+        onset: 'Just Now (<30m)',
+        symptoms: ['Severe Bleeding', 'Dizziness / Fainting'],
+        history: [],
+        spokenNative: 'बाइक एक्सीडेंट में सिर और दाहिने पैर में चोट लगी है, खून बह रहा है',
+        spokenEn: 'Road traffic accident with head & right leg trauma and active bleeding.',
+      },
+      {
+        label: 'Case 05: Acute Asthma (Tamil)',
+        lang: 'ta',
+        zones: ['Chest/Heart'],
+        painLevelId: 'extreme',
+        painScore: 9,
+        onset: 'Just Now (<30m)',
+        symptoms: ["Can't Breathe / Choking"],
+        history: ['Condition: Asthma / Inhaler'],
+        spokenNative: 'எனக்கு ஆஸ்துமா உள்ளது, இப்போது சுத்தமாக மூச்சு விட முடியவில்லை',
+        spokenEn: 'Known asthmatic experiencing acute respiratory distress.',
+      },
+      {
+        label: 'Case 06: Obstetric Pain (Kannada)',
+        lang: 'kn',
+        zones: ['Abdomen/Stomach', 'Pelvis/Hip'],
+        painLevelId: 'moderate',
+        painScore: 6,
+        onset: '1–6 Hours Ago',
+        symptoms: ['Severe Stomach Pain', 'Dizziness / Fainting'],
+        history: ['Condition: Pregnant'],
+        spokenNative: 'ನಾನು ಗರ್ಭಿಣಿ, ಹೊಟ್ಟೆಯಲ್ಲಿ ತೀವ್ರ ನೋವಿದೆ ಮತ್ತು ತಲೆತಿರುಗುತ್ತಿದೆ',
+        spokenEn: 'Pregnant patient reporting acute lower abdominal pain and dizziness.',
+      },
+    ];
+
+    // 3. APPLICATION STATE
+    const state = {
+      lang: 'or',
+      bodyOrientation: 'front',
+      selectedZones: new Set(),
+      painLevelId: 'moderate',
+      painScore: 5,
+      onsetEn: '',
+      selectedSymptoms: new Set(),
+      selectedHistory: new Set(),
+      spokenNative: '',
+      spokenEn: '',
+      activeDoctorQIndex: 0,
+      customDoctorFlashcard: null,
+      isListening: false,
+      timerSeconds: 0,
+      autoSpeak: true,
+      speechRate: 0.78,
+      audioCtx: null,
+      synthTimer: null,
+      recognition: null,
+    };
+
+    // 4. INITIALIZATION
+    window.onload = function () {
+      renderDemoCasesBar();
+      renderAllViews();
+      startGoldenHourTimer();
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.getVoices();
+        window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+      }
+    };
+
+    function startGoldenHourTimer() {
+      setInterval(() => {
+        state.timerSeconds++;
+        const mins = String(Math.floor(state.timerSeconds / 60)).padStart(2, '0');
+        const secs = String(state.timerSeconds % 60).padStart(2, '0');
+        document.getElementById('liveTriageTimer').textContent = `${mins}:${secs}`;
+      }, 1000);
+    }
+
+    // 5. UNIVERSAL DUAL-MODE AUDIO ENGINE (WEB SPEECH + WEB AUDIO PHONETIC CADENCE FALLBACK)
+    function setSpeechRate(rate) {
+      state.speechRate = rate;
+      const slowBtn = document.getElementById('speedSlowBtn');
+      const normBtn = document.getElementById('speedNormBtn');
+      if (rate < 0.9) {
+        slowBtn.className = 'px-2 py-1 rounded font-mono text-[11px] font-semibold bg-[#0284c7] text-white transition cursor-pointer';
+        normBtn.className = 'px-2 py-1 rounded font-mono text-[11px] font-semibold text-[#94a3b8] hover:text-white transition cursor-pointer';
+      } else {
+        normBtn.className = 'px-2 py-1 rounded font-mono text-[11px] font-semibold bg-[#0284c7] text-white transition cursor-pointer';
+        slowBtn.className = 'px-2 py-1 rounded font-mono text-[11px] font-semibold text-[#94a3b8] hover:text-white transition cursor-pointer';
+      }
+    }
+
+    function toggleAutoSpeak() {
+      state.autoSpeak = !state.autoSpeak;
+      const btn = document.getElementById('autoSpeakToggleBtn');
+      if (state.autoSpeak) {
+        btn.className = 'px-2.5 py-1.5 rounded-md bg-[#0d281e] border border-[#059669]/60 text-[#34d399] font-mono text-[11px] font-semibold transition cursor-pointer';
+        btn.textContent = 'AUTO-SPEAK ON TAP: ON';
+      } else {
+        btn.className = 'px-2.5 py-1.5 rounded-md bg-[#0f1419] border border-[#26303d] text-[#94a3b8] font-mono text-[11px] font-semibold transition cursor-pointer';
+        btn.textContent = 'AUTO-SPEAK ON TAP: OFF';
+      }
+    }
+
+    function setGlobalAudioMonitor(active, labelText) {
+      const monitor = document.getElementById('globalAudioMonitor');
+      const eq = document.getElementById('headerEqBars');
+      const textEl = document.getElementById('globalAudioStatusText');
+      const stopBtn = document.getElementById('globalAudioStopBtn');
+
+      if (active) {
+        monitor.className = 'flex items-center gap-2 bg-[#0c273d] border border-[#38bdf8] px-2.5 py-1.5 rounded-md';
+        eq.classList.remove('opacity-40');
+        eq.querySelectorAll('span').forEach((s) => s.classList.add('eq-bar'));
+        textEl.className = 'font-mono text-[11px] font-bold text-[#7dd3fc] whitespace-nowrap';
+        textEl.textContent = labelText;
+        stopBtn.classList.remove('hidden');
+      } else {
+        monitor.className = 'flex items-center gap-2 bg-[#0f1419] border border-[#26303d] px-2.5 py-1.5 rounded-md';
+        eq.classList.add('opacity-40');
+        eq.querySelectorAll('span').forEach((s) => s.classList.remove('eq-bar'));
+        textEl.className = 'font-mono text-[11px] font-semibold text-[#94a3b8] whitespace-nowrap';
+        textEl.textContent = 'AUDIO ENGINE: IDLE';
+        stopBtn.classList.add('hidden');
+      }
+    }
+
+    function stopAllAudio() {
+      if ('speechSynthesis' in window) {
+        try {
+          window.speechSynthesis.cancel();
+        } catch (e) {}
+      }
+      if (state.synthTimer) {
+        clearTimeout(state.synthTimer);
+        state.synthTimer = null;
+      }
+      setGlobalAudioMonitor(false, '');
+    }
+
+    function playPhoneticCadenceAudio(syllableCount, isEnglish) {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return 1200;
+        if (!state.audioCtx) state.audioCtx = new AudioCtx();
+        if (state.audioCtx.state === 'suspended') state.audioCtx.resume();
+
+        const ctx = state.audioCtx;
+        const now = ctx.currentTime;
+        const steps = Math.min(Math.max(syllableCount, 3), 10);
+        const stepDur = state.speechRate < 0.9 ? 0.14 : 0.11;
+
+        for (let i = 0; i < steps; i++) {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          const baseFreq = isEnglish ? 420 : 360;
+          const contour = Math.sin((i / steps) * Math.PI) * 90 + (i % 2 === 0 ? 25 : -15);
+          osc.frequency.setValueAtTime(baseFreq + contour, now + i * stepDur);
+
+          gain.gain.setValueAtTime(0.001, now + i * stepDur);
+          gain.gain.exponentialRampToValueAtTime(0.055, now + i * stepDur + 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + (i + 1) * stepDur);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + i * stepDur);
+          osc.stop(now + (i + 1) * stepDur + 0.01);
+        }
+        return Math.round(steps * stepDur * 1000) + 250;
+      } catch (e) {
+        return 1200;
+      }
+    }
+
+    function speakAudio(nativeText, bcp47Lang, phoneticFallbackText = '') {
+      stopAllAudio();
+      const isEn = bcp47Lang.startsWith('en');
+      const langBadge = isEn ? 'EN-IN' : LANG_DATA[state.lang].short.toUpperCase();
+      setGlobalAudioMonitor(true, `PLAYING [${langBadge}]`);
+
+      let usedNativeVoice = false;
+      if ('speechSynthesis' in window) {
+        try {
+          const voices = window.speechSynthesis.getVoices();
+          const exactVoice = voices.find((v) => v.lang.toLowerCase() === bcp47Lang.toLowerCase());
+          const prefixVoice = voices.find((v) => v.lang.toLowerCase().startsWith(bcp47Lang.split('-')[0].toLowerCase()));
+          const selectedVoice = exactVoice || prefixVoice;
+
+          if (selectedVoice || isEn) {
+            usedNativeVoice = true;
+            const utter = new SpeechSynthesisUtterance(nativeText);
+            utter.lang = bcp47Lang;
+            if (selectedVoice) utter.voice = selectedVoice;
+            utter.rate = state.speechRate;
+            utter.onend = () => setGlobalAudioMonitor(false, '');
+            utter.onerror = () => setGlobalAudioMonitor(false, '');
+            window.speechSynthesis.speak(utter);
+          } else if (phoneticFallbackText) {
+            // If OS lacks the regional Indic script TTS pack, speak phonetic transliteration via Indian English voice + acoustic cue
+            const inVoice = voices.find((v) => v.lang.toLowerCase().includes('in')) || voices[0];
+            usedNativeVoice = true;
+            playPhoneticCadenceAudio(4, false);
+            const utter = new SpeechSynthesisUtterance(phoneticFallbackText);
+            utter.lang = 'en-IN';
+            if (inVoice) utter.voice = inVoice;
+            utter.rate = Math.max(0.72, state.speechRate - 0.08);
+            utter.onend = () => setGlobalAudioMonitor(false, '');
+            utter.onerror = () => setGlobalAudioMonitor(false, '');
+            window.speechSynthesis.speak(utter);
+          }
+        } catch (err) {
+          usedNativeVoice = false;
+        }
+      }
+
+      if (!usedNativeVoice) {
+        const durationMs = playPhoneticCadenceAudio(Math.ceil(nativeText.length / 4), isEn);
+        state.synthTimer = setTimeout(() => {
+          setGlobalAudioMonitor(false, '');
+        }, durationMs);
+      }
+    }
+
+    // 6. PRESET CASES & STATE ACTIONS
+    function renderDemoCasesBar() {
+      const bar = document.getElementById('demoCasesBar');
+      bar.innerHTML = '';
+      DEMO_CASES.forEach((c, idx) => {
+        const btn = document.createElement('button');
+        btn.onclick = () => loadDemoCase(idx);
+        btn.className =
+          'px-2.5 py-1 rounded bg-[#161c24] hover:bg-[#1e2733] text-[#cbd5e1] hover:text-white border border-[#26303d] hover:border-[#38bdf8] font-mono text-[11px] font-medium transition cursor-pointer whitespace-nowrap';
+        btn.textContent = c.label;
+        bar.appendChild(btn);
+      });
+    }
+
+    function loadDemoCase(index) {
+      const c = DEMO_CASES[index];
+      if (!c) return;
+
+      state.lang = c.lang;
+      document.getElementById('patientLanguageSelect').value = c.lang;
+
+      state.selectedZones = new Set(c.zones);
+      state.painLevelId = c.painLevelId;
+      state.painScore = c.painScore;
+      state.onsetEn = c.onset || '';
+      state.selectedSymptoms = new Set(c.symptoms);
+      state.selectedHistory = new Set(c.history);
+      state.spokenNative = c.spokenNative;
+      state.spokenEn = c.spokenEn;
+      state.customDoctorFlashcard = null;
+      state.activeDoctorQIndex = 0;
+
+      renderAllViews();
+      if (state.autoSpeak) {
+        speakAudio(c.spokenNative, LANG_DATA[state.lang].bcp47, c.spokenEn);
+      }
+    }
+
+    function resetAllTriage() {
+      stopAllAudio();
+      state.selectedZones.clear();
+      state.painLevelId = 'moderate';
+      state.painScore = 5;
+      state.onsetEn = '';
+      state.selectedSymptoms.clear();
+      state.selectedHistory.clear();
+      state.spokenNative = '';
+      state.spokenEn = '';
+      state.customDoctorFlashcard = null;
+      state.activeDoctorQIndex = 0;
+      state.timerSeconds = 0;
+      document.getElementById('liveTriageTimer').textContent = '00:00';
+      renderAllViews();
+    }
+
+    function changeLanguage(newLang) {
+      state.lang = newLang;
+      state.customDoctorFlashcard = null;
+      renderAllViews();
+      if (state.autoSpeak) {
+        speakNativeInstruction();
+      }
+    }
+
+    // 7. MASTER RENDER FUNCTION
+    function renderAllViews() {
+      const ld = LANG_DATA[state.lang];
+
+      // Panel 1 Headers
+      document.getElementById('step1NativeSub').textContent = ld.tapPrompt;
+      document.getElementById('step1PhoneticSub').textContent = ld.tapPromptPhonetic;
+      document.getElementById('painScaleNativePrompt').textContent = ld.painPrompt;
+      document.getElementById('onsetNativePrompt').textContent = ld.onsetPrompt;
+
+      updateBodyMapVisuals();
+      renderPainScaleGrid();
+      renderOnsetGrid();
+
+      // Panel 2 Symptoms Grid (with Phonetic + Individual Speaker Button)
+      const symGrid = document.getElementById('symptomsGrid');
+      symGrid.innerHTML = '';
+      ld.symptoms.forEach((sym) => {
+        const active = state.selectedSymptoms.has(sym.en);
+        const card = document.createElement('div');
+        card.onclick = () => toggleSymptom(sym.en, sym.native, sym.phonetic);
+        card.className = `p-2.5 rounded-md border text-left transition flex flex-col justify-between cursor-pointer ${
+          active
+            ? 'bg-[#be123c] border-[#fb7185] text-white'
+            : 'bg-[#0f1419] hover:bg-[#1e2733] border-[#26303d] hover:border-[#475569] text-white'
+        }`;
+        card.innerHTML = `
+          <div class="flex items-center justify-between w-full mb-1">
+            <span class="font-mono text-[10px] font-bold ${active ? 'text-[#ffe4e6]' : 'text-[#64748b]'}">${sym.code}</span>
+            <button
+              type="button"
+              onclick="event.stopPropagation(); speakAudio('${escapeSingleQuote(sym.native)}', '${ld.bcp47}', '${escapeSingleQuote(sym.phonetic)}')"
+              class="p-1 rounded ${active ? 'bg-black/25 text-white hover:bg-black/40' : 'bg-[#161c24] text-[#38bdf8] hover:bg-[#283444]'} border border-white/10 cursor-pointer"
+              title="Speak '${sym.en}' in ${ld.short}"
+            >
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zm4.54 3.46a5 5 0 010 7.07" />
+              </svg>
+            </button>
+          </div>
+          <span class="text-sm font-bold leading-snug block ${active ? 'text-white' : 'text-[#f1f5f9]'}">
+            ${sym.native}
+          </span>
+          <span class="font-mono text-[10px] block mt-0.5 ${active ? 'text-[#fecdd3]' : 'text-[#7dd3fc]'}">
+            ${sym.phonetic}
+          </span>
+          <span class="text-[11px] font-medium mt-0.5 block ${active ? 'text-[#ffe4e6]' : 'text-[#94a3b8]'}">
+            ${sym.en}
+          </span>
+        `;
+        symGrid.appendChild(card);
+      });
+
+      // Panel 2 History & Allergies Chips (with Individual Speaker Button to Ask Patient)
+      const histGrid = document.getElementById('historyChipsGrid');
+      histGrid.innerHTML = '';
+      ld.history.forEach((item) => {
+        const active = state.selectedHistory.has(item.en);
+        const card = document.createElement('div');
+        card.onclick = () => toggleHistory(item.en, item.native, item.phonetic);
+        let classes = 'p-2 rounded border text-left transition flex items-start justify-between gap-1.5 cursor-pointer ';
+        if (active && item.isAllergy) {
+          classes += 'bg-[#be123c] border-[#fb7185] text-white';
+        } else if (active) {
+          classes += 'bg-[#0284c7] border-[#7dd3fc] text-white';
+        } else {
+          classes += 'bg-[#161c24] hover:bg-[#1e2733] border-[#26303d] text-[#e2e8f0]';
+        }
+        card.className = classes;
+        card.innerHTML = `
+          <div>
+            <span class="block text-xs font-bold leading-tight">${item.native}</span>
+            <span class="block text-[11px] font-medium mt-0.5 ${active ? 'opacity-95' : 'text-[#8b9bb0]'}">${item.en}</span>
+          </div>
+          <button
+            type="button"
+            onclick="event.stopPropagation(); speakAudio('${escapeSingleQuote(item.native)}', '${ld.bcp47}', '${escapeSingleQuote(item.phonetic)}')"
+            class="p-1 rounded shrink-0 ${active ? 'bg-black/25 text-white' : 'bg-[#0f1419] text-[#38bdf8] hover:bg-[#283444]'} border border-white/10 cursor-pointer"
+            title="Ask patient in ${ld.short}: ${item.phonetic}"
+          >
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M11 5L6 9H2v6h4l5 4V5zm4.54 3.46a5 5 0 010 7.07" />
+            </svg>
+          </button>
+        `;
+        histGrid.appendChild(card);
+      });
+
+      // Panel 2 Voice & Sample Labels
+      document.getElementById('micBtnText').textContent = `Capture Patient Speech in ${ld.short}`;
+      document.getElementById('listeningLangLabel').textContent = `Listening for ${ld.short} speech...`;
+
+      const simSelect = document.getElementById('phraseSimulatorSelect');
+      simSelect.innerHTML = `<option value="">Select sample ${ld.short} phrase...</option>`;
+      ld.phrases.forEach((p, i) => {
+        const opt = document.createElement('option');
+        opt.value = i;
+        opt.textContent = `“${p.native}”`;
+        simSelect.appendChild(opt);
+      });
+
+      const speechBox = document.getElementById('capturedSpeechBox');
+      if (state.spokenNative) {
+        speechBox.classList.remove('hidden');
+        document.getElementById('capturedNativeQuote').textContent = `“${state.spokenNative}”`;
+        document.getElementById('capturedEnglishQuote').textContent = state.spokenEn;
+      } else {
+        speechBox.classList.add('hidden');
+      }
+
+      // Panel 3 Confirmation Button & Handover
+      document.getElementById('confirmPatientBtnLabel').textContent = `VERIFY WITH PATIENT (${ld.short})`;
+      renderHandoverCard();
+      renderDoctorFlashcard(false);
+    }
+
+    function escapeSingleQuote(str) {
+      return String(str).replace(/'/g, "\\'");
+    }
+
+    // 8. PANEL 1 INTERACTIONS: BODY MAP, 5-TIER PAIN SCALE & ONSET DURATION
+    function switchBodyOrientation(view) {
+      state.bodyOrientation = view;
+      const frontBtn = document.getElementById('viewFrontBtn');
+      const backBtn = document.getElementById('viewBackBtn');
+      const chestLbl = document.getElementById('lbl-Chest/Heart');
+      const abdLbl = document.getElementById('lbl-Abdomen/Stomach');
+
+      if (view === 'front') {
+        frontBtn.className = 'px-3 py-1 rounded text-xs font-semibold bg-[#0284c7] text-white transition cursor-pointer';
+        backBtn.className = 'px-3 py-1 rounded text-xs font-semibold text-[#94a3b8] hover:text-white transition cursor-pointer';
+        chestLbl.textContent = 'CHEST / HEART';
+        abdLbl.textContent = 'ABDOMEN';
+      } else {
+        backBtn.className = 'px-3 py-1 rounded text-xs font-semibold bg-[#0284c7] text-white transition cursor-pointer';
+        frontBtn.className = 'px-3 py-1 rounded text-xs font-semibold text-[#94a3b8] hover:text-white transition cursor-pointer';
+        chestLbl.textContent = 'UPPER BACK';
+        abdLbl.textContent = 'LOWER BACK';
+      }
+    }
+
+    function toggleBodyZone(zoneName) {
+      const ld = LANG_DATA[state.lang];
+      const zInfo = ld.zones[zoneName];
+      if (state.selectedZones.has(zoneName)) {
+        state.selectedZones.delete(zoneName);
+      } else {
+        state.selectedZones.add(zoneName);
+        if (state.autoSpeak && zInfo) {
+          speakAudio(zInfo.ask, ld.bcp47, `${zInfo.phonetic} pain?`);
+        }
+      }
+      updateBodyMapVisuals();
+      renderHandoverCard();
+    }
+
+    function speakBodyZoneQuery(zoneName) {
+      const ld = LANG_DATA[state.lang];
+      const zInfo = ld.zones[zoneName];
+      if (zInfo) {
+        speakAudio(zInfo.ask, ld.bcp47, `${zInfo.phonetic} pain?`);
+      }
+    }
+
+    function clearBodyZones() {
+      state.selectedZones.clear();
+      updateBodyMapVisuals();
+      renderHandoverCard();
+    }
+
+    function updateBodyMapVisuals() {
+      const ld = LANG_DATA[state.lang];
+      const svgZones = ['Head/Neck', 'Chest/Heart', 'Abdomen/Stomach', 'Pelvis/Hip', 'Right Arm', 'Left Arm', 'Right Leg', 'Left Leg'];
+
+      svgZones.forEach((z) => {
+        const el = document.getElementById(`zone-${z}`);
+        const lbl = document.getElementById(`lbl-${z}`);
+        if (!el) return;
+        if (state.selectedZones.has(z)) {
+          el.classList.add('active');
+          if (lbl) lbl.classList.add('zone-label-active');
+        } else {
+          el.classList.remove('active');
+          if (lbl) lbl.classList.remove('zone-label-active');
+        }
+      });
+
+      const spineBtn = document.getElementById('spineQuickBtn');
+      if (state.selectedZones.has('Back/Spine')) {
+        spineBtn.className =
+          'px-3 py-1 rounded border border-[#fb7185] bg-[#be123c] text-xs font-semibold text-white transition cursor-pointer';
+        spineBtn.textContent = `Back / Spine (${ld.zones['Back/Spine'].native})`;
+      } else {
+        spineBtn.className =
+          'px-3 py-1 rounded border border-[#334155] bg-[#161c24] hover:border-[#fb7185] text-xs font-semibold text-[#cbd5e1] transition cursor-pointer';
+        spineBtn.textContent = `+ Back / Spine (${ld.zones['Back/Spine'].native})`;
+      }
+
+      const badgesBox = document.getElementById('selectedBodyBadges');
+      if (state.selectedZones.size === 0) {
+        badgesBox.innerHTML = '<span class="text-xs text-[#64748b] font-medium text-center">Tap any body region to translate &amp; confirm aloud</span>';
+      } else {
+        badgesBox.innerHTML = '';
+        state.selectedZones.forEach((z) => {
+          const zInfo = ld.zones[z] || { native: z, phonetic: z, ask: z };
+          const row = document.createElement('div');
+          row.className =
+            'flex items-center justify-between px-2.5 py-1.5 rounded bg-[#3d1820] text-[#fecdd3] border border-[#be123c] text-xs';
+          row.innerHTML = `
+            <div>
+              <span class="font-bold text-white">${zInfo.native}</span>
+              <span class="font-mono text-[10px] text-[#fda4af] ml-1.5">[${zInfo.phonetic}]</span>
+              <span class="text-[11px] text-[#ffe4e6] ml-1.5">• ${z}</span>
+            </div>
+            <button
+              type="button"
+              onclick="speakBodyZoneQuery('${z}')"
+              class="px-2 py-0.5 rounded bg-[#be123c] hover:bg-[#9f1239] text-white font-mono text-[10px] font-bold cursor-pointer"
+              title="Ask patient about ${z} pain in ${ld.short}"
+            >
+              ASK
+            </button>
+          `;
+          badgesBox.appendChild(row);
+        });
+      }
+    }
+
+    function renderPainScaleGrid() {
+      const ld = LANG_DATA[state.lang];
+      const grid = document.getElementById('painScaleGrid');
+      const tag = document.getElementById('painCurrentTag');
+      grid.innerHTML = '';
+
+      ld.painLevels.forEach((lvl) => {
+        const isSelected = state.painLevelId === lvl.id;
+        const btn = document.createElement('button');
+        btn.onclick = () => {
+          state.painLevelId = lvl.id;
+          state.painScore = lvl.score;
+          renderPainScaleGrid();
+          renderHandoverCard();
+          if (state.autoSpeak) {
+            speakAudio(`${lvl.native}`, ld.bcp47, `${lvl.phonetic} pain`);
+          }
+        };
+
+        let activeStyle = 'border border-[#26303d] bg-[#0f1419] hover:border-[#475569]';
+        if (isSelected) {
+          if (lvl.score >= 7) activeStyle = 'border-2 border-[#f43f5e] bg-[#3d1820]';
+          else if (lvl.score >= 4) activeStyle = 'border-2 border-[#f59e0b] bg-[#291d0a]';
+          else activeStyle = 'border-2 border-[#10b981] bg-[#0d281e]';
+        }
+
+        btn.className = `p-1.5 rounded-md ${activeStyle} text-left transition cursor-pointer flex flex-col justify-between`;
+        btn.innerHTML = `
+          <span class="font-mono text-[11px] font-bold ${lvl.score >= 7 ? 'text-[#fb7185]' : lvl.score >= 4 ? 'text-[#fbbf24]' : 'text-[#34d399]'}">${lvl.range}</span>
+          <span class="text-xs font-bold text-white leading-tight mt-0.5">${lvl.native}</span>
+          <span class="text-[10px] text-[#94a3b8] leading-tight">${lvl.en}</span>
+        `;
+        grid.appendChild(btn);
+
+        if (isSelected) {
+          tag.textContent = `${lvl.score} / 10 • ${lvl.en.toUpperCase()}`;
+          tag.className =
+            lvl.score >= 7
+              ? 'font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#3d1820] text-[#fda4af] border border-[#e11d48]/50'
+              : lvl.score >= 4
+              ? 'font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#291d0a] text-[#fcd34d] border border-[#d97706]/50'
+              : 'font-mono text-xs font-bold px-2 py-0.5 rounded bg-[#0d281e] text-[#34d399] border border-[#059669]/50';
+        }
+      });
+    }
+
+    function speakPainScalePrompt() {
+      const ld = LANG_DATA[state.lang];
+      speakAudio(ld.painPrompt, ld.bcp47, 'Pain level 1 to 10?');
+    }
+
+    function renderOnsetGrid() {
+      const ld = LANG_DATA[state.lang];
+      const grid = document.getElementById('onsetGrid');
+      grid.innerHTML = '';
+
+      ld.onsets.forEach((o) => {
+        const active = state.onsetEn === o.en;
+        const btn = document.createElement('button');
+        btn.onclick = () => {
+          state.onsetEn = active ? '' : o.en;
+          renderOnsetGrid();
+          renderHandoverCard();
+          if (!active && state.autoSpeak) {
+            speakAudio(o.native, ld.bcp47, o.phonetic);
+          }
+        };
+        btn.className = `p-2 rounded border text-left transition cursor-pointer ${
+          active
+            ? 'bg-[#0284c7] border-[#7dd3fc] text-white'
+            : 'bg-[#0f1419] hover:bg-[#1e2733] border-[#26303d] text-[#e2e8f0]'
+        }`;
+        btn.innerHTML = `
+          <span class="block text-xs font-bold leading-tight">${o.native}</span>
+          <span class="block text-[10px] mt-0.5 ${active ? 'text-[#e0f2fe]' : 'text-[#8b9bb0]'}">${o.en}</span>
+        `;
+        grid.appendChild(btn);
+      });
+    }
+
+    function speakOnsetPrompt() {
+      const ld = LANG_DATA[state.lang];
+      speakAudio(ld.onsetPrompt, ld.bcp47, 'When did this start?');
+    }
+
+    // 9. PANEL 2 INTERACTIONS: SYMPTOMS, HISTORY & LIVE SPEECH + KEYWORD PARSER
+    function toggleSymptom(enName, nativeText, phoneticText) {
+      if (state.selectedSymptoms.has(enName)) {
+        state.selectedSymptoms.delete(enName);
+      } else {
+        state.selectedSymptoms.add(enName);
+        if (state.autoSpeak) {
+          speakAudio(nativeText, LANG_DATA[state.lang].bcp47, phoneticText);
+        }
+      }
+      renderAllViews();
+    }
+
+    function toggleHistory(enName, nativeText, phoneticText) {
+      if (state.selectedHistory.has(enName)) {
+        state.selectedHistory.delete(enName);
+      } else {
+        state.selectedHistory.add(enName);
+        if (state.autoSpeak) {
+          speakAudio(nativeText, LANG_DATA[state.lang].bcp47, phoneticText);
+        }
+      }
+      renderAllViews();
+    }
+
+    function toggleLiveOrSimulatedSpeech() {
+      const wave = document.getElementById('voiceWaveBox');
+      const btnText = document.getElementById('micBtnText');
+      const ld = LANG_DATA[state.lang];
+
+      if (state.isListening) {
+        state.isListening = false;
+        wave.classList.add('hidden');
+        wave.classList.remove('flex');
+        btnText.textContent = `Capture Patient Speech in ${ld.short}`;
+        if (state.recognition) {
+          try { state.recognition.stop(); } catch (e) {}
+        }
+        return;
+      }
+
+      state.isListening = true;
+      wave.classList.remove('hidden');
+      wave.classList.add('flex');
+      btnText.textContent = 'Stop Listening';
+
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (SpeechRec) {
+        try {
+          const rec = new SpeechRec();
+          state.recognition = rec;
+          rec.lang = ld.bcp47;
+          rec.interimResults = false;
+          rec.maxAlternatives = 1;
+
+          rec.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            state.isListening = false;
+            wave.classList.add('hidden');
+            wave.classList.remove('flex');
+            parsePatientFreeText(transcript);
+          };
+
+          rec.onerror = () => {
+            state.isListening = false;
+            wave.classList.add('hidden');
+            wave.classList.remove('flex');
+            simulateSpokenPhrase(0);
+          };
+
+          rec.onend = () => {
+            if (state.isListening) {
+              state.isListening = false;
+              wave.classList.add('hidden');
+              wave.classList.remove('flex');
+              simulateSpokenPhrase(0);
+            }
+          };
+
+          rec.start();
+          return;
+        } catch (err) {
+          // Fallback to offline sample ASR below
+        }
+      }
+
+      setTimeout(() => {
+        if (state.isListening) {
+          state.isListening = false;
+          wave.classList.add('hidden');
+          wave.classList.remove('flex');
+          simulateSpokenPhrase(0);
+        }
+      }, 1500);
+    }
+
+    function handleDirectPatientTextSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById('patientDirectTextInput');
+      const val = input.value.trim();
+      if (!val) return;
+      input.value = '';
+      parsePatientFreeText(val);
+    }
+
+    function parsePatientFreeText(rawText) {
+      const lower = rawText.toLowerCase();
+      const detected = [];
+
+      if (lower.includes('chest') || lower.includes('heart') || lower.includes('ଛାତି') || lower.includes('বুক') || lower.includes('छाती') || lower.includes('ಎದೆ')) {
+        state.selectedZones.add('Chest/Heart');
+        state.selectedSymptoms.add('Crushing Chest Pain');
+        state.painLevelId = 'extreme';
+        state.painScore = 9;
+        detected.push('Chest Pain');
+      }
+      if (lower.includes('breath') || lower.includes('chok') || lower.includes('asthma') || lower.includes('ନିଶ୍ୱାସ') || lower.includes('শ্বাস') || lower.includes('साँस')) {
+        state.selectedSymptoms.add("Can't Breathe / Choking");
+        detected.push('Dyspnea / Breathing Difficulty');
+      }
+      if (lower.includes('penicillin') || lower.includes('allergy') || lower.includes('ପେନିସିଲିନ୍') || lower.includes('পেনিসিলিন') || lower.includes('पेनिसिलिन')) {
+        state.selectedHistory.add('ALLERGY: Penicillin / Antibiotics');
+        detected.push('Penicillin Allergy');
+      }
+      if (lower.includes('diab') || lower.includes('sugar') || lower.includes('ଡାଇବେଟିସ୍') || lower.includes('ডায়াবেটিস') || lower.includes('डायबिटीज')) {
+        state.selectedHistory.add('Condition: Diabetic (Type 1/2)');
+        detected.push('Diabetes');
+      }
+      if (lower.includes('bleed') || lower.includes('blood') || lower.includes('ରକ୍ତ') || lower.includes('রক্ত') || lower.includes('खून')) {
+        state.selectedSymptoms.add('Severe Bleeding');
+        detected.push('Active Bleeding');
+      }
+      if (lower.includes('stomach') || lower.includes('abdomen') || lower.includes('ପେଟ') || lower.includes('পেট') || lower.includes('पेट')) {
+        state.selectedZones.add('Abdomen/Stomach');
+        state.selectedSymptoms.add('Severe Stomach Pain');
+        detected.push('Abdominal Pain');
+      }
+      if (lower.includes('hour') || lower.includes('ଘଣ୍ଟା') || lower.includes('ঘণ্টা') || lower.includes('घंटे')) {
+        state.onsetEn = '1–6 Hours Ago';
+      }
+
+      state.spokenNative = rawText;
+      state.spokenEn =
+        detected.length > 0
+          ? `Extracted clinical entities: ${detected.join(', ')} (from statement: "${rawText}")`
+          : `Patient reported: "${rawText}"`;
+
+      renderAllViews();
+      if (state.autoSpeak) {
+        speakAudio(state.spokenEn, 'en-IN');
+      }
+    }
+
+    function simulateSpokenPhrase(idx) {
+      if (idx === '') return;
+      const ld = LANG_DATA[state.lang];
+      const phrase = ld.phrases[parseInt(idx, 10)] || ld.phrases[0];
+      if (!phrase) return;
+
+      state.spokenNative = phrase.native;
+      state.spokenEn = phrase.en;
+      phrase.zones.forEach((z) => state.selectedZones.add(z));
+      phrase.symptoms.forEach((s) => state.selectedSymptoms.add(s));
+      phrase.history.forEach((h) => state.selectedHistory.add(h));
+      state.painScore = phrase.pain;
+      state.painLevelId = phrase.pain >= 9 ? 'extreme' : phrase.pain >= 7 ? 'severe' : phrase.pain >= 4 ? 'moderate' : 'mild';
+      if (phrase.onset) state.onsetEn = phrase.onset;
+
+      renderAllViews();
+      if (state.autoSpeak) {
+        speakAudio(phrase.en, 'en-IN');
+      }
+    }
+
+    function speakCapturedPatientNative() {
+      if (!state.spokenNative) return;
+      speakAudio(state.spokenNative, LANG_DATA[state.lang].bcp47, state.spokenEn);
+    }
+
+    function speakCapturedEnglish() {
+      if (!state.spokenEn) return;
+      speakAudio(state.spokenEn, 'en-IN');
+    }
+
+    // 10. PANEL 3: TRIAGE CALCULATION, BILINGUAL HANDOVER READOUTS & CUSTOM TRANSLATOR
+    function renderHandoverCard() {
+      const ld = LANG_DATA[state.lang];
+      document.getElementById('handoverLangPill').textContent = `${ld.name} ↔ EN`;
+
+      const allergies = [];
+      const conditions = [];
+      state.selectedHistory.forEach((item) => {
+        if (item.startsWith('ALLERGY:')) {
+          allergies.push(item.replace('ALLERGY: ', ''));
+        } else {
+          conditions.push(item.replace('Condition: ', ''));
+        }
+      });
+
+      const allergyBox = document.getElementById('allergyAlertBox');
+      const allergyText = document.getElementById('handoverAllergiesText');
+      if (allergies.length > 0) {
+        allergyBox.className = 'p-2.5 rounded bg-[#be123c] border border-[#fb7185] text-white';
+        allergyBox.querySelector('span').className = 'font-mono text-[10px] font-bold uppercase tracking-wider text-[#ffe4e6] block';
+        allergyText.className = 'text-xs sm:text-sm font-bold text-white mt-0.5';
+        allergyText.textContent = `CONTRAINDICATED: ${allergies.join(' • ')}`;
+      } else {
+        allergyBox.className = 'p-2.5 rounded bg-[#161c24] border border-[#26303d]';
+        allergyBox.querySelector('span').className = 'font-mono text-[10px] font-bold uppercase tracking-wider text-[#94a3b8] block';
+        allergyText.className = 'text-xs sm:text-sm font-semibold text-[#64748b] mt-0.5';
+        allergyText.textContent = 'None documented';
+      }
+
+      document.getElementById('handoverConditionsText').textContent =
+        conditions.length > 0 ? conditions.join(' • ') : 'None documented';
+
+      document.getElementById('handoverOnsetText').textContent = state.onsetEn || 'Not specified';
+
+      document.getElementById('handoverZonesText').textContent =
+        state.selectedZones.size > 0 ? Array.from(state.selectedZones).join(', ') : 'None marked';
+
+      const activePainObj = ld.painLevels.find((p) => p.id === state.painLevelId) || ld.painLevels[2];
+      const painEl = document.getElementById('handoverPainText');
+      painEl.textContent = `${state.painScore} / 10 (${activePainObj.en.toUpperCase()})`;
+      painEl.className =
+        state.painScore >= 7
+          ? 'font-mono text-xs font-bold text-[#fb7185] mt-0.5'
+          : state.painScore >= 4
+          ? 'font-mono text-xs font-bold text-[#fbbf24] mt-0.5'
+          : 'font-mono text-xs font-bold text-[#34d399] mt-0.5';
+
+      const symArr = Array.from(state.selectedSymptoms);
+      let complaintSummary = '';
+      if (state.spokenEn) {
+        complaintSummary = state.spokenEn;
+        if (symArr.length > 0) complaintSummary += ` [${symArr.join(', ')}]`;
+      } else if (symArr.length > 0) {
+        complaintSummary = `Patient reports: ${symArr.join(', ')}.`;
+      } else {
+        complaintSummary = 'Awaiting patient selection or speech input...';
+      }
+      document.getElementById('handoverComplaintText').textContent = complaintSummary;
+
+      // ESI Triage Priority Logic
+      const esiBanner = document.getElementById('esiBanner');
+      const esiTitle = document.getElementById('esiLevelTitle');
+      const esiReason = document.getElementById('esiReasonText');
+
+      const hasCriticalSymptom =
+        state.selectedSymptoms.has('Crushing Chest Pain') ||
+        state.selectedSymptoms.has("Can't Breathe / Choking") ||
+        state.selectedSymptoms.has('Severe Bleeding') ||
+        state.selectedSymptoms.has("Numbness / Can't Move Arm");
+
+      if (hasCriticalSymptom || state.painScore >= 8) {
+        esiBanner.className = 'rounded-md p-3 bg-[#3d1820] border-l-4 border-[#f43f5e] border border-[#f43f5e]/50 text-white transition-all';
+        esiTitle.textContent = 'ESI-1 • IMMEDIATE RESUSCITATION';
+        const reasons = [];
+        if (state.selectedSymptoms.has('Crushing Chest Pain')) reasons.push('ACS / Cardiac Protocol');
+        if (state.selectedSymptoms.has("Can't Breathe / Choking")) reasons.push('Airway / Respiratory Distress');
+        if (state.selectedSymptoms.has("Numbness / Can't Move Arm")) reasons.push('Acute Stroke Protocol');
+        if (state.selectedSymptoms.has('Severe Bleeding')) reasons.push('Active Hemorrhage');
+        if (allergies.length > 0) reasons.push(`Allergy: ${allergies.join(', ')}`);
+        esiReason.textContent = reasons.length > 0 ? reasons.join(' • ') : 'Severe Pain Score >= 8/10';
+      } else if (state.painScore >= 4 || state.selectedZones.size > 0 || symArr.length > 0) {
+        esiBanner.className = 'rounded-md p-3 bg-[#291d0a] border-l-4 border-[#f59e0b] border border-[#f59e0b]/40 text-[#fef3c7] transition-all';
+        esiTitle.textContent = 'ESI-2 • EMERGENT';
+        esiReason.textContent =
+          allergies.length > 0
+            ? `Drug Allergy (${allergies.join(', ')}) • Priority physician assessment`
+            : 'Moderate acuity symptoms / localized trauma • Fast-track evaluation';
+      } else {
+        esiBanner.className = 'rounded-md p-3 bg-[#0d281e] border-l-4 border-[#10b981] border border-[#10b981]/40 text-[#d1fae5] transition-all';
+        esiTitle.textContent = 'ESI-3 • URGENT / STABLE';
+        esiReason.textContent = 'Mild discomfort • Standard triage queue';
+      }
+    }
+
+    function readClinicalHandoverEnglish() {
+      const ld = LANG_DATA[state.lang];
+      const priority = document.getElementById('esiLevelTitle').textContent;
+      const zones = document.getElementById('handoverZonesText').textContent;
+      const pain = document.getElementById('handoverPainText').textContent;
+      const allergies = document.getElementById('handoverAllergiesText').textContent;
+      const onset = document.getElementById('handoverOnsetText').textContent;
+      const complaint = document.getElementById('handoverComplaintText').textContent;
+
+      const script = `BridgeVoice Emergency Handover. Priority ${priority}. Patient primary language ${ld.short}. Affected regions: ${zones}. Pain score ${pain}. Onset: ${onset}. Allergies: ${allergies}. ${complaint}`;
+      speakAudio(script, 'en-IN');
+    }
+
+    function readPatientConfirmationNative() {
+      const ld = LANG_DATA[state.lang];
+      const nativeParts = [];
+      const phoneticParts = [];
+
+      state.selectedZones.forEach((z) => {
+        if (ld.zones[z]) {
+          nativeParts.push(ld.zones[z].native);
+          phoneticParts.push(ld.zones[z].phonetic);
+        }
+      });
+
+      ld.symptoms.forEach((s) => {
+        if (state.selectedSymptoms.has(s.en)) {
+          nativeParts.push(s.native);
+          phoneticParts.push(s.phonetic);
+        }
+      });
+
+      ld.history.forEach((h) => {
+        if (state.selectedHistory.has(h.en)) {
+          nativeParts.push(h.native);
+          phoneticParts.push(h.phonetic);
+        }
+      });
+
+      const summaryNative =
+        nativeParts.length > 0
+          ? `${ld.confirmPrefix}${nativeParts.join(', ')}${ld.confirmSuffix}`
+          : ld.tapPrompt;
+      const summaryPhonetic =
+        phoneticParts.length > 0
+          ? `Confirming: ${phoneticParts.join(', ')}`
+          : ld.tapPromptPhonetic;
+
+      state.customDoctorFlashcard = {
+        en: `Confirmation Readback: ${nativeParts.length > 0 ? Array.from(state.selectedSymptoms).concat(Array.from(state.selectedZones)).join(', ') : 'Please point to pain location.'}`,
+        native: summaryNative,
+        phonetic: summaryPhonetic,
+      };
+      renderDoctorFlashcard(true);
+    }
+
+    function triggerDoctorQuestion(qIdx) {
+      state.activeDoctorQIndex = qIdx;
+      state.customDoctorFlashcard = null;
+      renderDoctorFlashcard(true);
+    }
+
+    function handleCustomDoctorMessage(e) {
+      e.preventDefault();
+      const input = document.getElementById('customDoctorInput');
+      const val = input.value.trim();
+      if (!val) return;
+      const ld = LANG_DATA[state.lang];
+
+      // Match against built-in 10-language clinical dictionary words/phrases
+      const lower = val.toLowerCase();
+      const matchedTerms = [];
+      Object.entries(ld.customVocab).forEach(([engKey, translatedVal]) => {
+        if (lower.includes(engKey)) {
+          matchedTerms.push(translatedVal);
+        }
+      });
+
+      const nativeOutput =
+        matchedTerms.length > 0
+          ? matchedTerms.join(' • ')
+          : `${ld.tapPrompt}`;
+      const phoneticOutput =
+        matchedTerms.length > 0
+          ? matchedTerms.join(' | ')
+          : ld.tapPromptPhonetic;
+
+      state.customDoctorFlashcard = {
+        en: val,
+        native: nativeOutput,
+        phonetic: phoneticOutput,
+      };
+      input.value = '';
+      renderDoctorFlashcard(true);
+    }
+
+    function renderDoctorFlashcard(playAudio = false) {
+      const ld = LANG_DATA[state.lang];
+      const item = state.customDoctorFlashcard || ld.doctorQs[state.activeDoctorQIndex] || ld.doctorQs[0];
+
+      document.getElementById('flashcardNativeText').textContent = item.native;
+      document.getElementById('flashcardPhoneticText').textContent = `Phonetic: "${item.phonetic}"`;
+      document.getElementById('flashcardEnglishText').textContent = `EN: "${item.en}"`;
+
+      if (playAudio) {
+        speakAudio(item.native, ld.bcp47, item.phonetic);
+      }
+    }
+
+    function replayCurrentFlashcardAudio() {
+      const ld = LANG_DATA[state.lang];
+      const item = state.customDoctorFlashcard || ld.doctorQs[state.activeDoctorQIndex] || ld.doctorQs[0];
+      speakAudio(item.native, ld.bcp47, item.phonetic);
+    }
+
+    function speakNativeInstruction() {
+      const ld = LANG_DATA[state.lang];
+      speakAudio(ld.tapPrompt, ld.bcp47, ld.tapPromptPhonetic);
+    }
+
+    function copyClinicalHandover() {
+      const ld = LANG_DATA[state.lang];
+      const priority = document.getElementById('esiLevelTitle').textContent;
+      const zones = document.getElementById('handoverZonesText').textContent;
+      const pain = document.getElementById('handoverPainText').textContent;
+      const onset = document.getElementById('handoverOnsetText').textContent;
+      const allergies = document.getElementById('handoverAllergiesText').textContent;
+      const conditions = document.getElementById('handoverConditionsText').textContent;
+      const complaint = document.getElementById('handoverComplaintText').textContent;
+
+      const note = `BRIDGEVOICE ER HANDOVER (${new Date().toLocaleTimeString()})
+Priority   : ${priority}
+Language   : ${ld.name} <-> English
+Regions    : ${zones}
+Pain (NRS) : ${pain}
+Onset      : ${onset}
+Allergies  : ${allergies}
+History    : ${conditions}
+Complaint  : ${complaint}`;
+
+      const ta = document.createElement('textarea');
+      ta.value = note;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+
+      const btn = document.getElementById('copyNoteBtn');
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = '<span>Copied to Clipboard</span>';
+      setTimeout(() => {
+        btn.innerHTML = originalHTML;
+      }, 1800);
+    }
+
+    function openModal(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
